@@ -551,9 +551,9 @@ class DBController extends DataHandler {
     private function connect(){
         try {
             $this->pdo = new PDO(
-                "".config('DB_CONNECTION','mysql').":host=".config('DB_HOST').":".config('DB_PORT',3306).";dbname=".config('DB_DATABASE').";",
-                config('DB_USERNAME'),
-                config('DB_PASSWORD'),
+                "".config('DB_CONNECTION','mysql').":host=".config('DB_HOST','localhost').":".config('DB_PORT',3306).";dbname=".config('DB_DATABASE').";",
+                config('DB_USERNAME', 'root'),
+                config('DB_PASSWORD',''),
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
