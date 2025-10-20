@@ -1,0 +1,6 @@
+/.vscode
+/.aspnet_client
+/.vendor
+db/user.log
+db/.my.cnf
+.env
