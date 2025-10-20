@@ -3,4 +3,5 @@
 /vendor
 /db/user.log
 /db/.my.cnf
+test.php
 .env
