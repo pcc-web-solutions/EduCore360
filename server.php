@@ -551,9 +551,9 @@ class DBController extends DataHandler {
     private function connect(){
         try {
             $this->pdo = new PDO(
-                "".config('DB_CONNECTION','mysql').":host=".config('DB_HOST','localhost').":".config('DB_PORT',3306).";dbname=".config('DB_DATABASE','educore360').";",
-                config('DB_USERNAME', 'root'),
-                config('DB_PASSWORD','pccws.2024'),
+                "".config('DB_CONNECTION','mysql').":host=".config('DB_HOST').":".config('DB_PORT',3306).";dbname=".config('DB_DATABASE').";",
+                config('DB_USERNAME'),
+                config('DB_PASSWORD'),
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -571,7 +571,7 @@ class DBController extends DataHandler {
     }
     public function updateCharsetCollation($charset = 'utf8mb4', $collation = 'utf8mb4_general_ci') {
         try {
-            $db = config('DB_DATABASE','educore360');
+            $db = config('DB_DATABASE');
             $tables = $this->pdo->query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$db}' AND TABLE_TYPE = 'BASE TABLE' ")->fetchAll(PDO::FETCH_COLUMN);
     
             foreach ($tables as $table) {
@@ -784,7 +784,7 @@ class DBController extends DataHandler {
     private function backupCSV() {
         $tables = $this->pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         $zip = new ZipArchive();
-        $zipFilename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . '.zip';
+        $zipFilename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . '.zip';
     
         if ($zip->open($zipFilename, ZipArchive::CREATE) !== true) {
             throw new Exception("Could not create ZIP file.");
@@ -824,13 +824,13 @@ class DBController extends DataHandler {
                 $sheet->fromArray($rows, null, 'A2');
             }
         }
-        $filename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . '.xlsx';
+        $filename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . '.xlsx';
         $writer = new Xlsx($spreadsheet);
         $writer->save($filename);
         $this->downloadFile($filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     }
     private function backupJSON() {
-        $filename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . ".json";
+        $filename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . ".json";
         $tables = $this->pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         $data = [];
         foreach ($tables as $table) {
@@ -840,7 +840,7 @@ class DBController extends DataHandler {
         return $this->downloadFile($filename, 'application/json');
     }
     private function backupXML() {
-        $filename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . ".xml";
+        $filename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . ".xml";
         $xml = new SimpleXMLElement('<database/>'); // Root element
 
         $tables = $this->pdo->query("SHOW FULL TABLES")->fetchAll(PDO::FETCH_NUM);
@@ -868,7 +868,7 @@ class DBController extends DataHandler {
         return $this->downloadFile($filename, 'application/xml');
     }
     private function backupYAML() {
-        $filename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . ".x-yaml";
+        $filename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . ".x-yaml";
         if (!class_exists('Symfony\Component\Yaml\Yaml')) {
             throw new Exception("Symfony YAML package is not installed. Run 'composer require symfony/yaml'.");
         }
@@ -882,9 +882,9 @@ class DBController extends DataHandler {
         return $this->downloadFile($filename, 'application/x-yaml');   
     }
 	private function backupSQL(){
-        $filename = $this->backupDir . config('DB_DATABASE','educore360') . '_backup_on_' . date('Y-m-d_H-i-s') . '.sql';
+        $filename = $this->backupDir . config('DB_DATABASE') . '_backup_on_' . date('Y-m-d_H-i-s') . '.sql';
         $sqlScript = "";
-        $sqlScript .= "-- Database Backup: ".config('DB_DATABASE','educore360')."\n";
+        $sqlScript .= "-- Database Backup: ".config('DB_DATABASE')."\n";
         $sqlScript .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n\n";
         $sqlScript .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
         
@@ -928,7 +928,7 @@ class DBController extends DataHandler {
         }
 
         $sqlScript .= "-- Backup Stored Procedures & Functions\n";
-        $stmt = $this->pdo->query("SHOW PROCEDURE STATUS WHERE Db = '".config('DB_DATABASE','educore360')."'");
+        $stmt = $this->pdo->query("SHOW PROCEDURE STATUS WHERE Db = '".config('DB_DATABASE')."'");
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $procedureName = $row['Name'];
             $stmtProc = $this->pdo->query("SHOW CREATE PROCEDURE `$procedureName`");
@@ -937,7 +937,7 @@ class DBController extends DataHandler {
             $sqlScript .= $rowProc['Create Procedure'] . ";\n\n";
         }
 
-        $stmt = $this->pdo->query("SHOW FUNCTION STATUS WHERE Db = '".config('DB_DATABASE','educore360')."'");
+        $stmt = $this->pdo->query("SHOW FUNCTION STATUS WHERE Db = '".config('DB_DATABASE')."'");
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $functionName = $row['Name'];
             $stmtFunc = $this->pdo->query("SHOW CREATE FUNCTION `$functionName`");
@@ -971,7 +971,7 @@ class DBController extends DataHandler {
     }
     private function backupSqlGzip() {
         $timestamp = date("Y-m-d_H-i-s");
-        $dbName = config('DB_DATABASE','educore360');
+        $dbName = config('DB_DATABASE');
         $sqlFile = $this->backupDir . $dbName . "_backup_" . $timestamp . ".sql";
         $gzFile  = $sqlFile . ".gz";
         $mysqldumpPath = "\"C:\\Program Files\\MySQL\\MySQL Server 9.1\\bin\\mysqldump.exe\"";
