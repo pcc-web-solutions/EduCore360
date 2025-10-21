@@ -138,7 +138,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                             <div class="col-lg-12 col-xl-12">
                                 <div class="card-box">
                                     <ul class="nav nav-pills navtab-bg nav-justified">
-                                        <?php $result = $dmo->getEnumValues("staff", "emp_term");
+                                        <?php $result = $dmo->getEnumValues("staff", "status");
                                         if($result['status']){
                                             $count = 1;
                                             foreach ($result['data'] as $value) { ?>
@@ -151,7 +151,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                         } ?>
                                     </ul>
                                     <div class="tab-content">
-                                        <?php $result = $dmo->getEnumValues("staff", "emp_term");
+                                        <?php $result = $dmo->getEnumValues("staff", "status");
                                         if($result['status']){
                                             $cnt = 1;
                                             foreach ($result['data'] as $value) { ?>
@@ -179,8 +179,8 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                         </thead>
                                                         <tbody id="tbl<?= str_replace(" ","_", $value); ?>s">
                                                         <?php
-                                                        if($dmo->getStaffs(["stf.school"=>$user['school_code'],"stf.emp_term"=>$value])['status']){
-                                                        $response = $dmo->getStaffs(["stf.school"=>$user['school_code'],"stf.emp_term"=>$value]); $count=1;
+                                                        if($dmo->getStaffs(["stf.school"=>$user['school_code'],"stf.status"=>$value])['status']){
+                                                        $response = $dmo->getStaffs(["stf.school"=>$user['school_code'],"stf.status"=>$value]); $count=1;
                                                         foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                                             <tr>
                                                                 <td><img src="<?= $dmo->safeData($row['passport_url']); ?>" alt="image" class="rounded-circle" width="50px" height="50px"></td>
@@ -220,7 +220,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
     <script src="asset/js/dms.js"></script>
     <script type="text/javascript">  
         $(function(){
-            <?php $result = $dmo->getEnumValues("staff", "emp_term");
+            <?php $result = $dmo->getEnumValues("staff", "status");
             if($result['status']){
                 $count = 1;
                 foreach ($result['data'] as $value) { ?>
