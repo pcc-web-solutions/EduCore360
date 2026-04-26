@@ -57,6 +57,8 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                     <div class="tab-content">
                                         <div class="tab-pane show active" id="companybasicinfo">
                                             <form id="frmCompanyBasicInfo" autocomplete="off" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
+                                                <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
                                                 <h5 class="mb-4 text-uppercase bg-light p-2"><i class="mdi mdi-account-circle mr-1"></i> Company Info</h5>
                                                 <div class="row">
                                                     <div class="col-md-12">
@@ -89,6 +91,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                         </div>
                                         <div class="tab-pane" id="companycontactinfo">
                                             <form id="frmCompanyContactInfo" autocomplete="off" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                                 <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Contact Details</h5>
                                                 <div class="row">
                                                     <div class="col-md-6">
@@ -111,6 +114,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                         </div>
                                         <!-- <div class="tab-pane" id="companybankinfo">
                                             <form id="frmCompanyContactInfo" autocomplete="off" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                                 <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Bank Details</h5>
                                                 <div class="row">
                                                     <div class="col-md-6">
@@ -147,6 +151,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                         </div> -->
                                         <div class="tab-pane" id="companysocialinfo">
                                             <form id="frmCompanySocialInfo" autocomplete="off" method="post" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                                 <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-earth mr-1"></i> Social Media Handles</h5>
                                                 <div class="row">
                                                     <div class="col-md-6">
@@ -238,7 +243,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
         </div>
     <div class="rightbar-overlay"></div>
     <?php require "page/script.php"; ?>
-    <script src="asset/js/dms.js"></script>
+    <script type="text/javascript" src="asset/js/dms.js"></script>
     <script>
         $(document).ready(function(){
             $("button[name='updateCompanyBasicInfo']").on("click", function(){

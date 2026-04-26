@@ -21,6 +21,42 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
                 echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
             }
             break;
+        case "students":
+            try{
+                switch ($_REQUEST['filter']) {
+                    case 'all':
+                        $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['school'])];
+                        break;
+                    
+                    case 'class':
+                        $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['school']), "sc.class"=>$dmo->decryptData($_REQUEST['class1'])];
+                        break;
+                    
+                    case 'stream':
+                        $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['school']), "sc.class"=>$dmo->decryptData($_REQUEST['class2']), "s.stream_code"=>$dmo->decryptData($_REQUEST['stream'])];
+                        break;
+                    
+                    case 'individual':
+                        $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['school']), "std.adm_no"=>$dmo->decryptData($_REQUEST['adm_no'])];
+                        break;
+                    
+                    default:
+                        $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['school'])];
+                        break;
+                }
+                if($dmo->getStudents($conditions)['status']){
+                    $result = $dmo->getStudents($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = $row;
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
 
         case "users":
             try{
@@ -142,7 +178,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
 
         case "streams":
             try{
-                $conditions = ["s.class"=>$dmo->decryptData($_REQUEST['key'])];
+                $conditions = ["s.school"=>$dmo->userProfile($_SESSION['user']['userid'])['school_code'], "sc.class"=>$dmo->decryptData($_REQUEST['key'])];
                 if($dmo->getStreams($conditions)['status']){
                     $result = $dmo->getStreams($conditions); $data = [];
                     foreach ($result['data'] as $row) { 
@@ -157,6 +193,82 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
             }
             break;
             
+        case "upload_student_photo":
+            try{
+                $id = $dmo->decryptData($_REQUEST['id']);
+                if (isset($_FILES['photo'])) {
+                    $upload_res = $dmo->upload($_FILES['photo']);
+                    if ($upload_res['status']) {
+                        $table = "student"; $column = "profile_picture"; $value = $upload_res['path'];
+                        $updated = $dmo->editValue($table, $column, $id, $value);
+                        if($updated){
+                            echo json_encode(["status" => true, "filename" => $value ]);
+                        } else {
+                            echo json_encode(["status" => false, "message" => "Unable to ammend details"]);
+                        } 
+                    } else {
+                        echo json_encode(["status" => false, "message" => "Upload failed"]);
+                    }
+                } else {
+                    echo json_encode(["status" => false, "message" => "No file"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+        
+        case "generate_student_ids":
+            try{
+                $info = $dmo->getSchInfo($_SESSION['user'])['data'];
+                $students = $dmo->cleanData($_POST['students']);
+                $id_layout = $dmo->cleanData($_POST['id_layout']);
+                /*
+                CR80 PVC size (ISO/IEC 7810)
+                Width  = 85.6mm
+                Height = 54mm
+                */
+
+                class IDPDF extends TCPDF {
+                    public function Header() {}
+                    public function Footer() {}
+                }
+
+                $pdf = new IDPDF('L', 'mm', [54, 85.6], true, 'UTF-8', false);
+                $pdf->SetMargins(0, 0, 0);
+                $pdf->SetAutoPageBreak(false);
+
+                $pdf->SetCreator('Educore360');
+                $pdf->SetAuthor($info['school_name']);
+                $pdf->SetTitle('Student ID Card');
+                $pdf->SetSubject('Automated Student ID Creator');
+                $pdf->SetKeywords('');
+
+                foreach ($students as $student) {
+                    // ---------- FRONT ---------- */
+                    $pdf->AddPage();
+                    drawCardFront($pdf, $student, $info);
+                
+                    // ---------- BACK ---------- */
+                    $pdf->AddPage();
+                    drawCardBack($pdf, $student, $info);
+                }
+
+                /* ---------- OUTPUT ---------- */
+                ob_end_clean();
+                $pdf->Output(__DIR__."/ids/student_ids.pdf", 'F');
+                unset($pdf);
+
+                $saved = $dmo->save(__DIR__."/ids/student_ids.pdf");
+                if ($saved['status']) {
+                    echo json_encode(["status" => true, "pdf_url" => "request.php?tkn=".$dmo->storeRoute("ids/student_ids.pdf") ]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>$saved['message']]);
+                }
+            } catch (Exception $e){
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+
         case "update_data":
             try{
                 $table = $dmo->cleanData($dmo->decryptData($_REQUEST['table']));
@@ -172,5 +284,5 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
         default: break;
     }
 }else{
-    echo json_encode(array("status"=>"error", "message"=>"No request sent to server!"));
+    echo json_encode(["status"=>"error", "message"=>"No request sent to server!"]);
 }

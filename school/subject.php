@@ -90,29 +90,25 @@
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>
-                                    <th>School</th>
-                                    <th>Class</th>
                                     <th>Subject Code</th>
                                     <th>Subject Name</th>
-                                    <th>Group</th>
-                                    <th>Department</th>
+                                    <th>Level</th>
+                                    <th>Pathway</th>
                                     <th>Category</th>
                                 </tr>
                             </thead>
                             <tbody id="tblsubjects">
                             <?php
-                            if($dmo->getSubjects(["sbj.school"=>$user['school_code']])['status']){
-                            $response = $dmo->getSubjects(["sbj.school"=>$user['school_code']]); $count=1;
+                            if($dmo->getSubjects()['status']){
+                            $response = $dmo->getSubjects(); $count=1;
                             foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                 <tr>
                                     <td><?= $count ?></td>
-                                    <td contentEditable=true onblur='edit("subject","school",<?= $id ?>,this)'><?= $dmo->safeData($row['school_code']." - ".$row['school_name']) ?></td>
-                                    <td contentEditable=true onblur='edit("subject","class",<?= $id ?>,this)'><?= $dmo->safeData($row['class_code']." - ".$row['class_name']) ?></td>
                                     <td contentEditable=true onblur='edit("subject","subject_code",<?= $id ?>,this)'><?= $dmo->safeData($row['subject_code']) ?></td>
                                     <td contentEditable=true onblur='edit("subject","subject_name",<?= $id ?>,this)'><?= $dmo->safeData($row['subject_name']) ?></td>
-                                    <td contentEditable=true onblur='edit("subject","group",<?= $id ?>,this)'><?= $dmo->safeData($row['group_code']." - ".$row['group_name']) ?></td>
-                                    <td contentEditable=true onblur='edit("subject","department",<?= $id ?>,this)'><?= $dmo->safeData($row['dept_code']." - ".$row['dept_name']) ?></td>
-                                    <td contentEditable=true onblur='edit("subject","category",<?= $id ?>,this)'><?= $dmo->safeData($row['category']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","level",<?= $id ?>,this)'><?= $dmo->safeData($row['level_name']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","pathway",<?= $id ?>,this)'><?= $dmo->safeData($row['pathway']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","category",<?= $id ?>,this)'><?= $dmo->safeData($row['category']) ?></td>
                                 </tr>
                             <?php $count++; } }?>
                             </tbody>

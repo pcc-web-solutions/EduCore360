@@ -23,6 +23,7 @@
                                 <div class="modal-body">
                                     <form id="frmNewStream" autocomplete="off" method="post" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
+                                        <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
                                         <div class="form-group">
                                             <label for="class_code">Class Code:</label>
                                             <select name="class_code"  class="form-control select2" id="class_code">

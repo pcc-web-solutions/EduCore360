@@ -24,6 +24,19 @@
                                     <form id="frmNewStream" autocomplete="off" method="post" enctype="multipart/form-data">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                         <div class="form-group">
+                                            <label for="school">School Code:</label>
+                                            <select name="school" class="form-control select2" id="school" onchange='loadSelect("dimensions", "fetch.php", "dim_id", this); loadSelect("number_series", "fetch.php", "rct_nos", this); loadSelect("number_series", "fetch.php", "inv_nos", this); loadSelect("users", "fetch.php", "incharge", this)'>
+                                                <option value="">--select--</option>
+                                                <?php
+                                                if($dmo->getSchools()['status']){
+                                                    $response = $dmo->getSchools(); $count=1;
+                                                    foreach ($response['data'] as $row) { 
+                                                        echo "<option value=".$row['school_code'].">".$row['school_code']." - ".$row['school_name']."</option>";
+                                                    } 
+                                                }?>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
                                             <label for="class_code">Class Code:</label>
                                             <select name="class_code"  class="form-control select2" id="class_code">
                                                 <option value="">--select--</option>

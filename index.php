@@ -20,17 +20,17 @@ try {
                     if($response['status']){
                         $user_count++;
                     } else {
-                        echo json_encode(array("status"=>false,"msg"=>$response['message'])); exit;
+                        echo json_encode(["status"=>false,"msg"=>$response['message']]); exit;
                     }
                 } catch (Exception $e) {
-                    echo json_encode(array("status"=>false,"msg"=>$e->getMessage())); exit;
+                    echo json_encode(["status"=>false,"msg"=>$e->getMessage()]); exit;
                 }
             } $school_count++;
         }
         header("location: request.php?tkn=".$dmo->storeRoute("website/index.php")); exit;
     } else {
         try{
-            $code = "12345678"; $name = "PCC Secondary School"; $category = "National"; $mail = "pccws.limited@gmail.com"; $contact = "0741915943";
+            $code = "12345678"; $name = "PCC Senior School"; $category = "National"; $mail = "pccws.limited@gmail.com"; $contact = "0741915943";
             $response1 = $dmo->create_dummy_school($code,$name,$category,$mail,$contact);
             if($response1['status']){
                 try{
@@ -38,21 +38,21 @@ try {
                     if($response2['status']){
                         header("location: request.php?tkn=".$dmo->storeRoute("website/index.php"));
                     } else{
-                        echo json_encode(array("status"=>false,"msg"=>$response2['message'])); exit;
+                        echo json_encode(["status"=>false,"msg"=>$response2['message']]); exit;
                     }
                 } catch (Exception $e) {
-                    echo json_encode(array("status"=>false,"msg"=>$e->getMessage())); exit;
+                    echo json_encode(["status"=>false,"msg"=>$e->getMessage()]); exit;
                 }
             } else{
-                echo json_encode(array("status"=>false,"msg"=>$response1['message'])); exit;
+                echo json_encode(["status"=>false,"msg"=>$response1['message']]); exit;
             }
             
         }catch(Exception $e){
-            echo json_encode(array("status"=>false,"msg"=>$e->getMessage()));
+            echo json_encode(["status"=>false,"msg"=>$e->getMessage()]);
         }
     }
 }
 catch (Exception $e) {
-    echo json_encode(array("status"=>false,"msg"=>$e->getMessage()));
+    echo json_encode(["status"=>false,"msg"=>$e->getMessage()]);
 }
 ?>

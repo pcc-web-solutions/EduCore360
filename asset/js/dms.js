@@ -53,67 +53,12 @@ function submitData(form, rules, messages) {
     })
 }
 
-// async function loadSelect(request, url, selectID, obj) {
-//     let key = $(obj).children("option:selected").val();
-//     $.ajax({
-//         url: url,
-//         method: 'post',
-//         data: {
-//             request: JSON.stringify(await encryptData(request)),
-//             key: JSON.stringify(await encryptData(key))
-//         },
-//         dataType: 'json',
-//         success: async function(response) {
-//             if (response.status == true) {
-//                 var data = response.data;
-//                 var len = data.length;
-//                 $("#" + selectID).empty();
-//                 $("#" + selectID).append("<option value=''>--select--</option>")
-//                 for (var i = 0; i < len; i++) {
-//                     var value = data[i]['value'];
-//                     var text = data[i]['text'];
-//                     $("#" + selectID).append("<option value=" + value + ">" + text + "</option>");
-//                 }
-//             } else {
-//                 $("#" + selectID).empty();
-//                 $("#" + selectID).append("<option value=''>" + response.message + "</option>")
-//             }
-//         }
-//     })
-// }
-
-// async function edit(table, column, id, obj) {
-//     var values = {
-//         request: JSON.stringify(await encryptData("update_data")),
-//         table: JSON.stringify(await encryptData(table)),
-//         column: JSON.stringify(await encryptData(column)),
-//         id: JSON.stringify(await encryptData(id)),
-//         value: JSON.stringify(await encryptData(obj.innerHTML))
-//     }
-//     $.ajax({
-//         type: "POST",
-//         url: "fetch.php",
-//         data: values,
-//         dataType: 'json',
-//         success: function(response) {
-//             if (response) {
-//                 $(obj).closest("td").css({ "border": "2px solid darkcyan", "color": "darkcyan" })
-//             } else {
-//                 $(obj).closest("td").css({ "border": "2px solid red", "color": "red" })
-//             }
-//         }
-//     });
-// }
-
 async function loadSelect(request, url, selectID, obj) {
     let key = $(obj).children("option:selected").val();
     $.ajax({
         url: url,
         method: 'post',
-        data: {
-            request: request,
-            key: key
-        },
+        data: { request:request, key:key },
         dataType: 'json',
         success: async function(response) {
             if (response.status == true) {
@@ -155,6 +100,66 @@ function edit(table, column, id, obj) {
             }
         }
     });
+}
+
+async function loadSelect2(request, url, selectID, key_value) {
+    $.ajax({
+        url: url,
+        method: 'post',
+        data: { request:request, key:key_value },
+        dataType: 'json',
+        success: async function(response) {
+            if (response.status == true) {
+                var data = response.data;
+                var len = data.length;
+                $("#" + selectID).empty();
+                $("#" + selectID).append("<option value=''>--select--</option>")
+                for (var i = 0; i < len; i++) {
+                    var value = data[i]['value'];
+                    var text = data[i]['text'];
+                    $("#" + selectID).append("<option value=" + value + ">" + text + "</option>");
+                }
+            } else {
+                $("#" + selectID).empty();
+                $("#" + selectID).append("<option value=''>" + response.message + "</option>")
+            }
+        }
+    })
+}
+
+function search_table(tbodyid){
+  $('.search').on("keyup", function() {
+    var value = $(this).val().toLowerCase();
+    $(tbodyid+" tr").filter(function() {
+      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+    })
+  })
+}
+
+function createOptionKey(option){
+    switch (option) {
+        case "all":
+            $("#key_option").html('<div class="form-group"><label for="key_value">All Students:</label><input type="text" name="option_value" class="form-control " id="option_value" value="All" readonly></div>')
+            break;
+    
+        case "stream":
+            loadSelect2("classes", "fetch.php", "class2", $('#school').val())
+            $("#key_option").html('<div class="row"><div class="col-xl-6 col-lg-6 col-md-6 col-sm-6 col-xs-6"><div class="form-group"><label for="class2">Class:</label><select name="class2" class="form-control select2" id="class2"><option value="">--select--</option></select></div></div><div class="col-xl-6 col-lg-6 col-md-6 col-sm-6 col-xs-6"><div class="form-group"><label for="stream">Stream:</label><select name="stream" class="form-control select2" id="stream"><option value="">--select--</option></select></div></div></div>')
+            break;
+    
+        case "class":
+            loadSelect2("classes", "fetch.php", "class1", $('#school').val())
+            $("#key_option").html('<div class="form-group"><label for="class1">Choose Class:</label><select name="class1" class="form-control select2" id="class1" ><option value="">--select--</option></select></div>')
+            break;
+    
+        case "individual":
+            $("#key_option").html('<div class="form-group"><label for="individual">Admission Number:</label><input type="text" name="adm_no" class="form-control " id="adm_no" placeholder="Please enter student admission number"></div>')
+            break;
+    
+        default:
+            $("#key_option").html('<div class="form-group"><label for="key_value">For All:</label><input type="text" name="option_value" class="form-control" id="option_value" value="All" readonly></div>')
+            break;
+    }
 }
 
 function userSignUp() {
@@ -456,6 +461,7 @@ function saveNewClass() {
 function saveNewStream() {
     var form = document.querySelector('#frmNewStream');
     var rules = {
+        school: { required: true },
         form_code: { required: true },
         stream_code: { required: true, maxlength: 10 },
         stream_name: { required: true, maxlength: 20 },
@@ -464,6 +470,7 @@ function saveNewStream() {
         class_teacher: { required: true }
     };
     var messages = {
+        school: { required: "This field is required" },
         form_code: { required: "This field is required" },
         stream_code: { required: "This field is required", maxlength: "Stream code too long" },
         stream_name: { required: "This field is required", maxlength: "Stream name too long" },

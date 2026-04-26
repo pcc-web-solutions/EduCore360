@@ -1,8 +1,11 @@
 <?php
-require_once "server.php";
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
 
-$dmo->check_login();
+require_once "server.php";
 $dmo->manageSessionTimeout(false);
+$dmo->check_login();
 $user = $dmo->userProfile($_SESSION['user']['userid']);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -43,6 +46,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $user = $dmo->userProfile($_SESSION['user']['userid']);
             header("location: ".$dmo->switch_role($user));
                 
+        } catch (Exception $e) {
+            $err = $e->getMessage();
+        }
+    }
+
+    if(isset($_POST['updateCompanyBasicInfo'])){
+        try{
+            $school_name = $dmo->cleanData($_REQUEST['school_name']);
+            $address = $dmo->cleanData($_REQUEST['address']);
+            $logo = !empty($_FILES['logo'])? $dmo->upload($_FILES['logo']) : ["status"=>FALSE,"message"=>"File not posted"];
+            $dmo->editValue("school","school_name",$dmo->getSchInfo($user)['data']['id'], $school_name);
+            $dmo->editValue("school","address",$dmo->getSchInfo($user)['data']['id'], $address);
+            if($logo['status']){$dmo->editValue("school","logo",$dmo->getSchInfo($user)['data']['id'], $logo['path']);}
+            $info = "Schoo Info Updated successfully";           
         } catch (Exception $e) {
             $err = $e->getMessage();
         }
@@ -257,6 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if(isset($_POST['btnNewStream'])){
         try{
+            $school = $dmo->cleanData($_REQUEST['school'])?? $user['school_code'];
             $class_code = $dmo->cleanData($_REQUEST['class_code']);
             $stream_code = $dmo->cleanData($_REQUEST['stream_code']);
             $stream_name = $dmo->cleanData($_REQUEST['stream_name']);
@@ -264,11 +282,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $capacity = $dmo->cleanData($_REQUEST['capacity']);
             $class_teacher = $dmo->cleanData($_REQUEST['class_teacher']);
 
-            $stmt = "SELECT stream_code FROM stream WHERE class = ? AND stream_code = ? ";
-            $num_rows = $dmo->numRows(query: $stmt, params: [$class_code, $stream_code]);
+            $stmt = "SELECT stream_code FROM stream WHERE school = ? AND class = ? AND stream_name = ? OR stream_code = ?";
+            $num_rows = $dmo->numRows(query: $stmt, params: [$school, $class_code, $stream_name, $stream_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO stream (class, stream_code, stream_name, description, capacity, class_teacher) VALUES (?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$class_code,$stream_code,$stream_name,$description,$capacity,$class_teacher])){
+                $stmt = "INSERT INTO stream (school, class, stream_code, stream_name, description, capacity, class_teacher) VALUES (?, ?, ?, ?, ?, ?, ?) ";
+                if($dmo->executeInsert(query: $stmt, params: [$school, $class_code,$stream_code,$stream_name,$description,$capacity,$class_teacher])){
                     $success = "$stream_name added successfully";
                 }else{ throw new Exception("Unable to add $stream_name");}
             }else{ throw new Exception("$stream_name already exists");}

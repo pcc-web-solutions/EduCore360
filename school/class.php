@@ -14,10 +14,10 @@
             <div class="content">
                 <div class="container-fluid">
                     <div class="modal fade" id="NewClass" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
+                        <div class="modal-dialog modal-lg">
                             <div class="modal-content">
                                 <div class="modal-header bg-info">
-                                    <h4 class="modal-title text-white">New Class</h4>
+                                    <h4 class="modal-title text-white">Configure Classes</h4>
                                     <span class="card-tools"><a href="#" data-dismiss="modal" class="text-white"><i class="fa fa-times"></i></a></span>
                                 </div>
                                 <div class="modal-body">
@@ -25,16 +25,34 @@
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                         <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
                                         <div class="form-group">
-                                            <label for="class_code">Class Unique Code:</label>
-                                            <input type="text" name="class_code" class="form-control " id="class_code" value="<?= $dmo->generateUid() ?>" readonly>
+                                            <input type="text" class="form-control form-control-sm border-width-1 search" onkeyup="search_table('#tblclasses')" placeholder="Type in here ...">
                                         </div>
-                                        <div class="form-group">
-                                            <label for="class_name">Description:</label>
-                                            <input type="text" name="class_name" class="form-control " id="class_name" placeholder="e.g., Form 1">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="class_number">Class Number:</label>
-                                            <input type="text" name="class_number" class="form-control " id="class_number" placeholder="e.g., 1">
+                                        <div class="table-responsive">
+                                            <table id="tblclass_template" class="table-bordered table-head-fixed table-striped text-nowrap" style="width: 100%">
+                                                <thead>
+                                                    <tr style="height: 40px;">
+                                                        <th><input type="checkbox" name="select_all" class="select_all"></th>
+                                                        <th>Class Code</th>
+                                                        <th>Class Name</th>
+                                                        <th>Abbreviation</th>
+                                                        <th>Academic Level</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="tblclasses">
+                                                <?php
+                                                if($dmo->getClassesFromTemplate($user['school_code'])['status']){
+                                                $response = $dmo->getClassesFromTemplate($user['school_code']); $count=1;
+                                                foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
+                                                    <tr>
+                                                        <td><input type="checkbox" name="class[]" class="select_class" id="<?= $dmo->safeData($row['class_code']) ?>"></td>
+                                                        <td contentEditable=false onblur='edit("class","school",<?= $id ?>,this)'><?= $dmo->safeData($row['class_code']) ?></td>
+                                                        <td contentEditable=false onblur='edit("class","class_code",<?= $id ?>,this)'><?= $dmo->safeData($row['class_name']) ?></td>
+                                                        <td contentEditable=false onblur='edit("class","class_name",<?= $id ?>,this)'><?= $dmo->safeData($row['abbrev']) ?></td>
+                                                        <td contentEditable=false onblur='edit("class","class_number",<?= $id ?>,this)'><?= $dmo->safeData($row['level_name']) ?></td>
+                                                    </tr>
+                                                <?php $count++; } }?>
+                                                </tbody>
+                                            </table>
                                         </div>
                                         <button type="submit" class="btn btn-sm btn-info btn-flat float-right" name="btnNewClass" ><i class="fas fa-save"></i>&nbspSave</button> 
                                     </form>
@@ -91,14 +109,39 @@
 <script type="text/javascript">
 $(function(){
 	$("#tblclass").DataTable({
-    "responsive": false, "lengthChange": true, "autoWidth": true
-  }).buttons().container().appendTo('#tblclass_wrapper .col-md-6:eq(0)');
+        "responsive": false, "lengthChange": true, "autoWidth": true
+    }).buttons().container().appendTo('#tblclass_wrapper .col-md-6:eq(0)');
 })
 
 $(document).ready(function(){
-	$("button[name='btnNewClass']").on("click", function(){
-        saveNewClass();
+    let total_selected = 0;
+	$("button[name='btnNewClass']").on("click", function(e){
+        e.preventDefault();
+        if(total_selected < 1){
+
+        }
 	})
+
+    $(".select_all").click(function(){
+        if ($(this).is(":checked")) {
+            $(".select_class").each(function(){
+                $(this).prop("checked", true)
+            })
+        } else {
+            $(".select_class").each(function(){
+                $(this).prop("checked", false)
+            })
+        }
+    })
+
+    $(".select_class").click(function(){
+        if($(this).is(":checked")){ total_selected++; } else { total_selected-- }
+        if(total_selected>0){
+            $(".select_all").prop("checked", true)
+        } else {
+            $(".select_all").prop("checked", false)
+        }
+    })
 })
 </script>
 </body>

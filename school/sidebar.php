@@ -5,7 +5,7 @@
             <ul class="metismenu" id="side-menu">   
                 <li>
                     <a href="javascript: void(0);">
-                        <i class="fas fa-cog"></i>
+                        <i class="fas fa-cogs"></i>
                         <span>System Setups</span>
                         <span class="menu-arrow"></span>
                     </a>
@@ -16,6 +16,16 @@
                         <li><a href="<?= "request.php?tkn=".$dmo->storeRoute("school/student.php"); ?>">Setup Students</a></li>
                         <li><a href="<?= "request.php?tkn=".$dmo->storeRoute("school/term.php"); ?>">Setup Terms</a></li>
                         <li><a href="<?= "request.php?tkn=".$dmo->storeRoute("school/subject.php"); ?>">Setup Subjects</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="javascript: void(0);">
+                        <i class="fas fa-gear"></i>
+                        <span>Generate</span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <ul class="nav-second-level" aria-expanded="false">
+                        <li><a href="<?= "request.php?tkn=".$dmo->storeRoute("school/studentid.php"); ?>"><i class="fa fa-id-card"></i>&nbsp;&nbsp;Student IDs</a></li>
                     </ul>
                 </li>
                 <li>

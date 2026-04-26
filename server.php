@@ -67,21 +67,7 @@ class FileHandler {
             unset($_SESSION['route_tokens'][$token]);
         }
     }
-    public function replicateModule($sourceDir, $opt, $destinationDir, $npt) {
-        if (!is_dir($destinationDir)) {
-            mkdir($destinationDir, 0777, true);
-            $this->setFullPermissions($destinationDir);
-        }
-        foreach (scandir($sourceDir) as $file) {
-            if (strpos($file, $opt) === 0 && is_file("$sourceDir/$file")) {
-                $newName = $npt . substr($file, strlen($opt));
-                $target = "$destinationDir/$newName";
-                if (copy("$sourceDir/$file", $target)) {
-                    $this->setFullPermissions($target);
-                }
-            }
-        }
-    }
+
     public function upload($file): array {
         if ($file['error'] !== UPLOAD_ERR_OK) {
             return ["status" => false, "message" => $this->getUploadErrorMessage($file['error'])];
@@ -95,6 +81,14 @@ class FileHandler {
             $this->getFolderByType(mime_content_type($file['tmp_name']));
             $uploadedFilePath = $this->uploadFile($file, $this->uploadDir);
             return ["status" => true, "path" => $uploadedFilePath];
+        } catch (Exception $e) {
+            return ["status" => false, "message" => $e->getMessage()];
+        }
+    }
+    public function save($filePath){
+        try {
+            $this->setFullPermissions($filePath);
+            return ["status" => true];
         } catch (Exception $e) {
             return ["status" => false, "message" => $e->getMessage()];
         }
@@ -1428,7 +1422,7 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getSchools($conditions=[]){
-        $stmt = "SELECT id, school_code, school_name, category, address, mail, contact, logo, mission, vision, core_values, facebook, twitter, instagram, linkedin, skype, website, established_year,status, created_at, updated_at FROM school ";
+        $stmt = "SELECT id, school_code, school_name, category, address, mail, contact, logo, motto, mission, vision, core_values, facebook, twitter, instagram, linkedin, skype, website, established_year,status, created_at, updated_at FROM school ";
         $params = [];
         if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
         $stmt .= " ORDER BY school_code ASC, school_name ASC";
@@ -1658,6 +1652,15 @@ class DataManipulation extends User{
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
+    public function getClassesFromTemplate($school){
+        $stmt = "SELECT DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order, cl.class_number FROM class cl INNER JOIN academic_level al ON cl.level = al.level_name WHERE cl.class_code NOT IN (SELECT class FROM school_class WHERE school = ?) ORDER BY al.stage_order DESC, class_number DESC";
+        $params = [$school];
+        $num_rows = $this->numRows(query: $stmt, params: $params);
+        if($num_rows>0){
+            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        }else{$this->response = ["status"=>false, "message"=>"No records found"];}
+        return $this->response;
+    }
     public function getClasses($conditions=[]){
         $stmt = "SELECT DISTINCT sc.id, sc.school AS school_code, sch.school_name AS school, sc.class AS class_code, c.class_name, c.abbrev, sc.is_offered, c.class_number, al.level_name, al.stage_order FROM school_class sc INNER JOIN class c ON sc.class = c.class_code INNER JOIN academic_level al ON al.level_name = c.level INNER JOIN school sch ON sc.school = sch.school_code ";
         $params = [];
@@ -1670,7 +1673,7 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getStreams($conditions=[]){
-        $stmt = "SELECT DISTINCT s.id, sch.school_code, sch.school_name, sc.class, c.class_name, s.stream_code, s.stream_name, s.description, s.capacity, CONCAT(t.last_name, ' ', t.first_name) AS class_teacher, s.created_at, s.updated_at FROM stream s INNER JOIN school_class sc ON s.class = sc.class INNER JOIN class c ON sc.class = c.class_code LEFT JOIN school sch ON sch.school_code = sc.school LEFT JOIN teacher t ON s.class_teacher = t.teacher_code";
+        $stmt = "SELECT DISTINCT s.id, sch.school_code, sch.school_name, sc.class, c.class_name, s.stream_code, s.stream_name, s.description, s.capacity, CONCAT(t.last_name, ' ', t.first_name) AS class_teacher, s.created_at, s.updated_at FROM stream s INNER JOIN school_class sc ON s.class = sc.class INNER JOIN class c ON sc.class = c.class_code LEFT JOIN school sch ON sch.school_code = s.school LEFT JOIN teacher t ON s.class_teacher = t.teacher_code";
         $params = [];
         if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
         $stmt .= " ORDER BY sch.school_code ASC, s.class ASC, class_name ASC, stream_code ASC";
@@ -1681,10 +1684,10 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getSubjects($conditions=[]){
-        $stmt = "SELECT sbj.id, sbj.school AS school_code, sch.school_name, sbj.class AS class_code, cl.class_name, sbj.subject_code, sbj.subject_name, sbj.group AS group_code, grp.group_name, sbj.department AS dept_code, dept.dept_name, sbj.category FROM `subject` sbj INNER JOIN school sch ON sbj.school = sch.school_code INNER JOIN class cl ON sbj.class = cl.class_code JOIN subject_group grp ON sbj.group = grp.group_code JOIN subject_department dept ON sbj.department = dept.dept_code ";
+        $stmt = "SELECT sbj.id, sbj.subject_code, sbj.subject_name, al.level_name AS level_name, al.stage_order AS stage_order, p.pathway, sbj.category FROM `subject` sbj INNER JOIN `academic_level` al ON sbj.level = al.level_name LEFT JOIN pathway p ON p.id = sbj.pathway";
         $params = [];
         if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, class_name ASC, dept_name ASC, subject_code ASC";
+        $stmt .= " ORDER BY stage_order DESC, subject_name ASC";
         $num_rows = $this->numRows(query: $stmt, params: $params);
         if($num_rows>0){
             $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
@@ -1725,7 +1728,7 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getStudents($conditions=[]){
-        $stmt = "SELECT DISTINCT std.id, CONCAT(std.school,' - ', sch.school_name) AS school, std.adm_no, std.first_name, std.surname, std.last_name, std.gender, std.dob, std.doa, c.class_name AS class,  s.stream_name AS stream, t.term_name AS term, ce.year FROM student std INNER JOIN school sch ON std.school = sch.school_code LEFT JOIN class_enrollment ce ON ce.adm_no = std.adm_no LEFT JOIN stream s ON s.stream_code = ce.stream LEFT JOIN class c ON ce.class = c.class_code LEFT JOIN term t ON ce.term = t.term_code";
+        $stmt = "SELECT DISTINCT std.id, CONCAT(std.school,' - ', sch.school_name) AS school, std.adm_no, std.assessment_no, std.first_name, std.surname, std.last_name, std.gender, std.dob, std.doa, std.exit_date, std.birth_cert_no, std.nationality, std.religion, std.profile_picture, std.status, sc.class AS class_code, c.class_name AS class, s.stream_code, s.stream_name AS stream, t.term_name AS term, ce.year FROM student std INNER JOIN school sch ON std.school = sch.school_code LEFT JOIN class_enrollment ce ON ce.adm_no = std.adm_no LEFT JOIN stream s ON s.stream_code = ce.stream LEFT JOIN school_class sc ON ce.class = sc.class LEFT JOIN class c ON ce.class = c.class_code LEFT JOIN term t ON ce.term = t.term_code";
         $params = [];
         if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
         $stmt .= " ORDER BY school ASC, class DESC, stream ASC, adm_no ASC";
@@ -2114,6 +2117,5 @@ class Timetable{
     }
 }
 $dmo = new DataManipulation();
-$pdf = new TCPDF();
 $mail = new PHPMailer(false);
 $mpesa = new Mpesa();
