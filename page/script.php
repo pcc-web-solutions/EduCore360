@@ -1,4 +1,5 @@
 <script src="asset/js/vendor.min.js"></script>
+<script src="asset/js/jquery.toast.min.js"></script>
 <script src="asset/libs/jquery-ui.min.js"></script>
 <script src="asset/libs/jquery-validation/jquery.validate.min.js"></script>
 <script src="asset/libs/jquery-validation/additional-methods.min.js"></script>
@@ -32,6 +33,16 @@ $(function(){
     theme: 'bootstrap4'
   })
 })
+
+function showToast(type, message){
+    $.toast({
+        heading: type === "success" ? "Success" : "Error",
+        text: message,
+        showHideTransition: 'slide',
+        icon: type,
+        position: 'top-right'
+    })
+}
 
 function showModal(modalID){
   $(modalID).modal({backdrop: 'static', keyboard: false, display: true});

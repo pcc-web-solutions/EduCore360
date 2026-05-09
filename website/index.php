@@ -1,5 +1,4 @@
 <?php
-// Standalone landing page demo
 // EduCore360 — Paramount Communication Centre
 ?>
 <!DOCTYPE html>
@@ -11,6 +10,7 @@
     <link href="asset/css/icons.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="asset/css/font-awesome.min.css">
     <link rel="stylesheet" href="asset/css/website.css">
+    <link rel="shortcut icon" href="asset/images/app-icon.png">
 </head>
 <body class="dark-mode">
 

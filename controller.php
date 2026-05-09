@@ -255,20 +255,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if(isset($_POST['btnNewClass'])){
         try{
             $school = $dmo->cleanData($_REQUEST['school']);
-            $class_code = $dmo->cleanData($_REQUEST['class_code']);
-            $class_name = $dmo->cleanData($_REQUEST['class_name']);
-            $class_number = $dmo->cleanData($_REQUEST['class_number']);
-
-            $stmt = "SELECT class_code FROM class WHERE class_code = ? ";
-            $num_rows = $dmo->numRows(query: $stmt, params: [$class_code]);
-            if($num_rows<1){
-                $stmt = "INSERT INTO class (school, class_code, class_name, class_number) VALUES (?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school,$class_code,$class_name, $class_number])){
-                    $success = "$class_name added successfully";
-                }else{ throw new Exception("Unable to add $class_name");}
-            }else{ throw new Exception("$class_name already exists");}
+            $classes = $dmo->cleanData($_REQUEST['class']);
+            if(empty($classes)){ echo json_encode(["status"=>false, "message"=>"Please select at least one class from the template"]); return;}
+            foreach($classes as $class){
+                // Process each selected class
+                $sql = "INSERT INTO school_class (school, class, is_offered) VALUES (?, ?, ?) ";
+                if(!$dmo->executeInsert(query: $sql, params: [$school, $class, 1])){
+                    throw new Exception("Unable to add class: $class");
+                }
+            }
+            echo json_encode(["status"=>true, "message"=>"Classes configured successfully"]);
         }catch(Exception $e){
             $err = $e->getMessage();
+            echo json_encode(["status"=>false, "message"=>$err]);
         }
     }
 

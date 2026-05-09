@@ -38,13 +38,13 @@
                                                         <th>Academic Level</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody id="tblclasses">
+                                                <tbody id="tbltemplateclasses">
                                                 <?php
                                                 if($dmo->getClassesFromTemplate($user['school_code'])['status']){
                                                 $response = $dmo->getClassesFromTemplate($user['school_code']); $count=1;
                                                 foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                                     <tr>
-                                                        <td><input type="checkbox" name="class[]" class="select_class" id="<?= $dmo->safeData($row['class_code']) ?>"></td>
+                                                        <td><input type="checkbox" name="class[]" class="select_class" id="<?= $dmo->safeData($row['id']) ?>" value="<?= $dmo->safeData($row['class_code']) ?>"></td>
                                                         <td contentEditable=false onblur='edit("class","school",<?= $id ?>,this)'><?= $dmo->safeData($row['class_code']) ?></td>
                                                         <td contentEditable=false onblur='edit("class","class_code",<?= $id ?>,this)'><?= $dmo->safeData($row['class_name']) ?></td>
                                                         <td contentEditable=false onblur='edit("class","class_name",<?= $id ?>,this)'><?= $dmo->safeData($row['abbrev']) ?></td>
@@ -118,30 +118,52 @@ $(document).ready(function(){
 	$("button[name='btnNewClass']").on("click", function(e){
         e.preventDefault();
         if(total_selected < 1){
-
+            showToast("error", "Please select at least one class from the template.");
+        } else {
+            let form = $("#frmNewClass")[0];
+            let formData = new FormData(form);
+            formData.append("btnNewClass", true);
+            $.ajax({
+                url: "controller.php",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data){
+                    let response = JSON.parse(data);
+                    if(response.status){
+                        showToast("success", response.message);
+                        setTimeout(function(){ location.reload() }, 2000);
+                    } else {
+                        showToast("error", response.message);
+                    }
+                },
+                error: function(){
+                    showToast("error", "An error occurred while processing your request.");
+                }
+            });
         }
 	})
 
-    $(".select_all").click(function(){
-        if ($(this).is(":checked")) {
-            $(".select_class").each(function(){
-                $(this).prop("checked", true)
-            })
-        } else {
-            $(".select_class").each(function(){
-                $(this).prop("checked", false)
-            })
-        }
-    })
+    function updateSelectedCount(){
+        total_selected = $(".select_class:checked").length;
 
-    $(".select_class").click(function(){
-        if($(this).is(":checked")){ total_selected++; } else { total_selected-- }
-        if(total_selected>0){
-            $(".select_all").prop("checked", true)
+        if(total_selected === $(".select_class").length){
+            $(".select_all").prop("checked", true);
         } else {
-            $(".select_all").prop("checked", false)
+            $(".select_all").prop("checked", false);
         }
-    })
+    }
+
+    $(".select_all").on("click", function(){
+        $(".select_class").prop("checked", $(this).is(":checked"));
+        updateSelectedCount();
+    });
+
+    $(".select_class").on("click", function(){
+        updateSelectedCount();
+    });
+
 })
 </script>
 </body>

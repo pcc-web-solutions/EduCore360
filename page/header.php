@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="asset/libs/datatables/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="asset/libs/datatables/responsive.bootstrap4.css">
     <link rel="stylesheet" href="asset/libs/datatables/buttons.bootstrap4.css">
+    <link rel="stylesheet" href="asset/css/jquery.toast.min.css" />
     <link href="asset/css/app.min.css" rel="stylesheet" type="text/css" />
     <!-- Loading button css -->
     <link href="asset/libs/ladda/ladda-themeless.min.css" rel="stylesheet" type="text/css" />
