@@ -92,9 +92,16 @@
                                     <th>#</th>
                                     <th>Subject Code</th>
                                     <th>Subject Name</th>
+                                    <th>Abbreviation</th>
+                                    <th>Curriculum</th>
                                     <th>Level</th>
                                     <th>Pathway</th>
                                     <th>Category</th>
+                                    <th>Passmark</th>
+                                    <th>Description</th>
+                                    <th>Is Active</th>
+                                    <th>Created At</th>
+                                    <th>Updated At</th>
                                 </tr>
                             </thead>
                             <tbody id="tblsubjects">
@@ -106,9 +113,16 @@
                                     <td><?= $count ?></td>
                                     <td contentEditable=true onblur='edit("subject","subject_code",<?= $id ?>,this)'><?= $dmo->safeData($row['subject_code']) ?></td>
                                     <td contentEditable=true onblur='edit("subject","subject_name",<?= $id ?>,this)'><?= $dmo->safeData($row['subject_name']) ?></td>
+                                    <td contentEditable=true onblur='edit("subject","abbrev",<?= $id ?>,this)'><?= $dmo->safeData($row['abbrev']) ?></td>
+                                    <td contentEditable=true onblur='edit("subject","curriculum",<?= $id ?>,this)'><?= $dmo->safeData($row['curriculum']) ?></td>
                                     <td contentEditable=false onblur='edit("subject","level",<?= $id ?>,this)'><?= $dmo->safeData($row['level_name']) ?></td>
                                     <td contentEditable=false onblur='edit("subject","pathway",<?= $id ?>,this)'><?= $dmo->safeData($row['pathway']) ?></td>
                                     <td contentEditable=false onblur='edit("subject","category",<?= $id ?>,this)'><?= $dmo->safeData($row['category']) ?></td>
+                                    <td contentEditable=true onblur='edit("subject","passing_mark",<?= $id ?>,this)'><?= $dmo->safeData($row['passing_mark']) ?></td>
+                                    <td contentEditable=true onblur='edit("subject","description",<?= $id ?>,this)'><?= $dmo->safeData($row['description']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","is_active",<?= $id ?>,this)'><?= $dmo->safeData($row['is_active']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","created_at",<?= $id ?>,this)'><?= $dmo->safeData($row['created_at']) ?></td>
+                                    <td contentEditable=false onblur='edit("subject","updated_at",<?= $id ?>,this)'><?= $dmo->safeData($row['updated_at']) ?></td>
                                 </tr>
                             <?php $count++; } }?>
                             </tbody>

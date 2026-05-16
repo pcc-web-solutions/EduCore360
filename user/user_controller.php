@@ -46,7 +46,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $stmt = "SELECT school, id_no, CONCAT(first_name,' ',last_name) AS displayname, email, phone, role, profile_picture FROM staff WHERE id_no = ? ";
             if($dmo->numRows(query: $stmt, params: [$id_no])){
-                $resultset = $dmo->readData(query: $stmt, params: [$id_no]);
+                $stmt = $this->pdo->prepare(query: $stmt);
+                $stmt->execute(params: [$id_no]);
+                $resultset = $stmt->fetch(mode: PDO::FETCH_ASSOC);
                 $stmt = "SELECT userid FROM user WHERE userid = ? OR email = ? OR username = ? ";
                 if($dmo->numRows(query: $stmt, params: [$id_no, $resultset['email'], $alias])){
                     $err = "ID Number: $id_no is already tied to an account with the email: ".$resultset['email'].".";

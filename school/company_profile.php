@@ -15,6 +15,72 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
             <div class="content-page">
                 <div class="content">
                     <div class="container-fluid">
+                        <div class="modal fade" id="NewCompanyContact"  tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info">
+                                        <h4 class="modal-title text-white">Add a School Contact</h4>
+                                        <span class="card-tools"><a href="#" data-dismiss="modal" class="text-white"><i class="fa fa-times"></i></a></span>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="frmNewCompanyContact" autocomplete="off" method="post" enctype="multipart/form-data">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
+                                            <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
+                                            <div class="form-group">
+                                                <label for="contact_type">Contact Type</label>
+                                                <select name="contact_type" class="form-control select2" id="contact_type">
+                                                    <option value="">--select--</option>
+                                                    <?php $result = $dmo->getEnumValues("school_contact", "contact_type");
+                                                    if($result['status']){
+                                                        foreach ($result['data'] as $value) {
+                                                            echo "<option value=\"$value\">$value</option>";
+                                                        }
+                                                    } ?>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="contact_value">Contact Value</label>
+                                                <input type="text" name="contact_value" class="form-control" id="contact_value" placeholder="Give a brief description..." />
+                                            </div>
+                                            <button type="submit" class="btn btn-sm btn-info btn-flat float-right" name="btnSaveCompanyContact" ><i class="fas fa-save"></i>&nbspSave</button> 
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal fade" id="NewCompanySocial"  tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info">
+                                        <h4 class="modal-title text-white">New School Social Handle</h4>
+                                        <span class="card-tools"><a href="#" data-dismiss="modal" class="text-white"><i class="fa fa-times"></i></a></span>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="frmNewCompanySocial" autocomplete="off" method="post" enctype="multipart/form-data">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
+                                            <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
+                                            <div class="form-group">
+                                                <label for="platform">Platform</label>
+                                                <select name="platform" class="form-control select2" id="platform">
+                                                    <option value="">--select--</option>
+                                                    <?php $result = $dmo->getEnumValues("school_social", "platform");
+                                                    if($result['status']){
+                                                        foreach ($result['data'] as $value) {
+                                                            echo "<option value=\"$value\">$value</option>";
+                                                        }
+                                                    } ?>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="account_link">Account Link</label>
+                                                <textarea type="text" name="account_link" class="form-control" id="account_link" placeholder="Give a brief description..."></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-sm btn-info btn-flat float-right" name="btnSaveCompanySocial" ><i class="fas fa-save"></i>&nbspSave</button> 
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-12">
                                 <div class="page-title-box">
@@ -43,11 +109,11 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                 Contact Info
                                             </a>
                                         </li>
-                                        <li class="nav-item">
+                                        <!-- <li class="nav-item">
                                             <a href="#companybankinfo" data-toggle="tab" aria-expanded="false" class="nav-link">
                                                 Bank Account Details
                                             </a>
-                                        </li>
+                                        </li> -->
                                         <li class="nav-item">
                                             <a href="#companysocialinfo" data-toggle="tab" aria-expanded="false" class="nav-link">
                                                 Social Info
@@ -120,7 +186,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                     <div class="col-md-3 col-sm-3">
                                                         <div class="form-group">
                                                             <label for="knec_centre_no">Centre No</label>
-                                                            <input type="text" name="knec_centre_no"  class="form-control" id="knec_centre_no" placeholder="<?= $schInfo['knec_centre_no']?? "";?>">
+                                                            <input type="number" name="knec_centre_no"  class="form-control" id="knec_centre_no" placeholder="<?= $schInfo['knec_centre_no']?? "";?>">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -256,29 +322,35 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                             </form>
                                         </div>
                                         <div class="tab-pane" id="companycontactinfo">
-                                            <form id="frmCompanyContactInfo" autocomplete="off" method="post" enctype="multipart/form-data">
-                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
-                                                <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Contact Details</h5>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="mail">Contact Email Address</label>
-                                                            <input type="email" name="mail" class="form-control" id="mail" placeholder="<?= $schInfo['mail']?? "";?>">
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="contact">Contact Phone Number</label>
-                                                            <input type="text" name="contact" class="form-control" id="contact" placeholder="<?= $schInfo['contact']?? "";?>">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <button type="submit" name="updateCompanyContactInfo" class="btn btn-success waves-effect waves-light mt-2"><i class="mdi mdi-content-save"></i> Update</button>
-                                                </div>
-                                            </form>
+                                            <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Contact Details <span class="fas fa-plus-circle text-success float-right" style="cursor: pointer;" onclick="showModal('#NewCompanyContact')"></span></h5>
+                                            <div class="table-responsive">
+                                                <table id="tblcompanycontact" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
+                                                    <thead>
+                                                        <tr style="height: 40px;">
+                                                            <th>#</th>
+                                                            <th>Contact Type</th>
+                                                            <th>Contact Value</th>
+                                                            <th>Is Primary</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tblcompanycontacts">
+                                                    <?php
+                                                    $response = $dmo->getCompanyContacts(["sc.school"=>$user['school_code']]);
+                                                    if($response['status']){
+                                                    $count=1;
+                                                    foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
+                                                        <tr>
+                                                            <td><?= $count ?></td>
+                                                            <td contentEditable=false onblur='edit("school_contact","contact_type",<?= $id ?>,this)'><?= $dmo->safeData($row['contact_type']) ?></td>
+                                                            <td contentEditable=true onblur='edit("school_contact","contact_value",<?= $id ?>,this)'><?= $dmo->safeData($row['subject_name']) ?></td>
+                                                            <td contentEditable=false onblur='edit("school_contact","is_primary",<?= $id ?>,this)'><?= $dmo->safeData($row['is_primary']) ?></td>
+                                                        </tr>
+                                                    <?php $count++; } }?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
-                                        <div class="tab-pane" id="companybankinfo">
+                                        <!-- <div class="tab-pane" id="companybankinfo">
                                             <form id="frmCompanyContactInfo" autocomplete="off" method="post" enctype="multipart/form-data">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                                 <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Bank Details</h5>
@@ -314,89 +386,31 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                     <button type="submit" name="update_bacc_info" class="btn btn-success waves-effect waves-light mt-2"><i class="mdi mdi-content-save"></i> Save</button>
                                                 </div>
                                             </form>
-                                        </div>
+                                        </div> -->
                                         <div class="tab-pane" id="companysocialinfo">
-                                            <form id="frmCompanySocialInfo" autocomplete="off" method="post" enctype="multipart/form-data">
-                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
-                                                <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-earth mr-1"></i> Social Media Handles</h5>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="facebook">Facebook</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fab fa-facebook-square"></i></span>
-                                                                </div>
-                                                                <input type="text" name="facebook" class="form-control" id="facebook" placeholder="<?= $schInfo['facebook']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="twitter">Twitter</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fab fa-twitter"></i></span>
-                                                                </div>
-                                                                <input type="text" name="twitter" class="form-control" id="twitter" placeholder="<?= $schInfo['twitter']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div> 
-                                                </div> 
-
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="instagram">Instagram</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fab fa-instagram"></i></span>
-                                                                </div>
-                                                                <input type="text" name="instagram" class="form-control" id="instagram" placeholder="<?= $schInfo['instagram']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="linkedin">Linkedin</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fab fa-linkedin"></i></span>
-                                                                </div>
-                                                                <input type="text" name="linkedin" class="form-control" id="linkedin" placeholder="<?= $schInfo['linkedin']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div> 
-                                                </div> 
-
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="skype">Skype</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fab fa-skype"></i></span>
-                                                                </div>
-                                                                <input type="text" name="skype" class="form-control" id="skype" placeholder="<?= $schInfo['skype']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-group">
-                                                            <label for="website">Website</label>
-                                                            <div class="input-group">
-                                                                <div class="input-group-prepend">
-                                                                    <span class="input-group-text"><i class="fa fa-globe"></i></span>
-                                                                </div>
-                                                                <input type="text" name="website" class="form-control" id="website" placeholder="<?= $schInfo['website']?? "";?>">
-                                                            </div>
-                                                        </div>
-                                                    </div> 
-                                                </div>
-                                                <div class="text-right">
-                                                    <button type="submit" name="updateCompanySocialInfo" class="btn btn-success waves-effect waves-light mt-2"><i class="mdi mdi-content-save"></i> Update</button>
-                                                </div>
-                                            </form>
+                                            <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-earth mr-1"></i> Social Media Handles <span class="fas fa-plus-circle text-success float-right" style="cursor: pointer;" onclick="showModal('#NewCompanySocial')"></span></h5>
+                                            <div class="table-responsive">
+                                                <table id="tblcompanysocial" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
+                                                    <thead>
+                                                        <tr style="height: 40px;">
+                                                            <th>Platform</th>
+                                                            <th>Account Link</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tblcompanysocials">
+                                                    <?php
+                                                    $response = $dmo->getCompanySocialHandles(["ss.school"=>$user['school_code']]);
+                                                    if($response['status']){
+                                                    $count=1;
+                                                    foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
+                                                        <tr>
+                                                            <td contentEditable=false onblur='edit("school_social","platform",<?= $id ?>,this)'><?= $dmo->safeData($row['platform']) ?></td>
+                                                            <td contentEditable=true onblur='edit("school_social","account_link",<?= $id ?>,this)'><?= $dmo->safeData($row['account_link']) ?></td>
+                                                        </tr>
+                                                    <?php $count++; } }?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -411,15 +425,24 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
     <?php require "page/script.php"; ?>
     <script type="text/javascript" src="asset/js/dms.js"></script>
     <script>
+        $(function(){
+            $("#tblcompanycontact").DataTable({
+                "responsive": false, "lengthChange": true, "autoWidth": true
+            }).buttons().container().appendTo('#tblcompanycontact_wrapper .col-md-6:eq(0)');
+
+            $("#tblcompanysocial").DataTable({
+                "responsive": false, "lengthChange": true, "autoWidth": true
+            }).buttons().container().appendTo('#tblcompanysocial_wrapper .col-md-6:eq(0)');
+        })
         $(document).ready(function(){
             $("button[name='updateCompanyBasicInfo']").on("click", function(){
                 updateCompanyBasicInfo();
             })
-            $("button[name='updateCompanyContactInfo']").on("click", function(){
-                updateCompanyContactInfo();
+            $("button[name='btnSaveCompanyContact']").on("click", function(){
+                SaveCompanyContact();
             })
-            $("button[name='updateCompanySocialInfo']").on("click", function(){
-                updateCompanySocialInfo();
+            $("button[name='btnSaveCompanySocial']").on("click", function(){
+                SaveCompanySocial();
             })
         })
     </script>

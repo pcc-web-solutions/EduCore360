@@ -876,44 +876,6 @@ class DBController extends DataHandler {
             return ['status' => false, 'message' => 'Delete failed'];
         }
     }
-
-    public function buildWhereClauses($conditions): string{
-        $whereClauses = [];
-        foreach($conditions AS $column => $value){
-            $whereClauses[] = "$column = ?";
-        }
-        return " WHERE " . implode(separator: " AND ", array: $whereClauses);
-    }
-    public function buildParams($conditions){
-        $params = [];
-        foreach($conditions AS $column => $value){
-            $params[] = $value;
-        }
-        return $params;
-    }
-	public function readData($query, $params) {
-		try {
-            $stmt = $this->pdo->prepare(query: $query);
-            $stmt->execute(params: $params);
-            $resultset = $stmt->fetch(mode: PDO::FETCH_ASSOC);
-			return $resultset;
-        } catch (PDOException $e) {
-            $this->log("Query Error: " . $e->getMessage() . " | SQL: " . $query);
-            throw new Exception("Failed to retrieve data.");
-        }
-	}
-	public function readData_array($query, $params){
-        try {
-            $stmt = $this->pdo->prepare(query: $query);
-            $stmt->execute(params: $params);
-            $resultset = $stmt->fetchAll(mode: PDO::FETCH_ASSOC);
-            if(!empty($resultset))
-			    return $resultset;
-        } catch (PDOException $e) {
-            $this->log("Query Error: " . $e->getMessage() . " | SQL: " . $query);
-            throw new Exception("Failed to retrieve data.");
-        }
-	}
 	public function numRows($query, $params) {
         try {
             $stmt = $this->pdo->prepare(query: $query);
@@ -1537,54 +1499,89 @@ class DataManipulation extends User{
             return ["status"=>true, "message"=>"School info not initialized"];
     }
     public function getCountries($conditions=[]){
-        $stmt = "SELECT * FROM country ORDER BY country_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: []);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: [])];
+        $result = $this->select([
+            'columns' => "c.*",
+            'table' => 'country c',
+            'where' => $conditions,
+            'order' => 'country_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
+        }else{$this->response = ["status"=>false, "message"=>"No records found"];}
+        return $this->response;
+    }
+    public function getCompanyContacts($conditions=[]){
+        $result = $this->select([
+            'columns' => "sc.*",
+            'table' => 'school_contact sc',
+            'where' => $conditions,
+            'order' => 'sc.contact_type ASC, sc.is_primary DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
+        }else{$this->response = ["status"=>false, "message"=>"No records found"];}
+        return $this->response;
+    }
+    public function getCompanySocialHandles($conditions=[]){
+        $result = $this->select([
+            'columns' => "ss.*",
+            'table' => 'school_social ss',
+            'where' => $conditions,
+            'order' => 'ss.platform ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getRegions($conditions=[]){
-        $stmt = "SELECT r.* FROM region r";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY r.description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "r.*",
+            'table' => 'region r',
+            'where' => $conditions,
+            'order' => 'r.description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getCounties($conditions=[]){
-        $stmt = "SELECT c.* FROM county c INNER JOIN region r ON c.region = r.code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY c.description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "c.*",
+            'table' => 'county c',
+            'joins' => ['INNER JOIN region r ON c.region = r.code'],
+            'where' => $conditions,
+            'order' => 'c.description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSubCounties($conditions=[]){
-        $stmt = "SELECT sc.* FROM sub_county sc INNER JOIN county c ON sc.county = c.code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY sc.description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sc.*",
+            'table' => 'sub_county sc',
+            'joins' => ['INNER JOIN county c ON sc.county = c.code'],
+            'where' => $conditions,
+            'order' => 'sc.description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getScWards($conditions=[]){
-        $stmt = "SELECT w.* FROM ward w INNER JOIN sub_county sc ON w.sub_county = sc.code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY w.description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "w.*",
+            'table' => 'ward w',
+            'joins' => ['INNER JOIN sub_county sc ON w.sub_county = sc.code'],
+            'where' => $conditions,
+            'order' => 'school_code ASC, school_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -1595,237 +1592,329 @@ class DataManipulation extends User{
             'where' => $conditions,
             'order' => 'school_code ASC, school_name ASC'
         ]);
-        if($result['status']){
+        if($result['status'] || sizeof($result['data']) > 0){
             $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getDimensions($conditions=[]){
-        $stmt = "SELECT * FROM dimension d ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY created_at DESC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "d.*",
+            'table' => 'dimension d',
+            'where' => $conditions,
+            'order' => 'd.created_at DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getDimensionValues($conditions=[]){
-        $stmt = "SELECT dv.id, dv.school AS school_code, sch.school_name, dv.dim_id AS dim_id, d.dim_name, dv.dv_code, dv.dv_name, dv.description, dv.rct_nos, dv.inv_nos, dv.incharge, dv.filter_name FROM dim_value dv INNER JOIN dimension d ON dv.dim_id = d.dim_id INNER JOIN school sch ON dv.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY dv.school ASC, d.dim_name ASC, dv.dv_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "dv.id, dv.school AS school_code, sch.school_name, dv.dim_id AS dim_id, d.dim_name, dv.dv_code, dv.dv_name, dv.description, dv.rct_nos, dv.inv_nos, dv.incharge, dv.filter_name",
+            'table' => 'dim_value dv',
+            'joins' => [
+                'INNER JOIN dimension d ON dv.dim_id = d.dim_id',
+                'INNER JOIN school sch ON dv.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'dv.school ASC, d.dim_name ASC, dv.dv_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobCategories($conditions=[]){
-        $stmt = "SELECT * FROM job_category";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jc.*",
+            'table' => 'job_category jc',
+            'where' => $conditions,
+            'order' => 'jc.name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobLevels($conditions=[]){
-        $stmt = "SELECT * FROM job_level";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jl.*",
+            'table' => 'job_level jl',
+            'where' => $conditions,
+            'order' => 'jl.name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobGroups($conditions=[]){
-        $stmt = "SELECT * FROM job_group";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jg.*",
+            'table' => 'job_group jg',
+            'where' => $conditions,
+            'order' => 'jg.name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobTitles($conditions=[]){
-        $stmt = "SELECT job_title.id, job_title.title, job_category.name AS category, job_level.name AS level, job_group.name AS job_group, job_title.description, dpt.dept_name AS department, IF(job_title.status = 1, 'Active','Inactive') AS status, job_title.created_at, job_title.updated_at FROM job_title INNER JOIN department dpt ON dpt.dept_code = job_title.department INNER JOIN job_category ON job_title.category_id = job_category.id INNER JOIN job_level ON job_title.level_id = job_level.id INNER JOIN job_group ON job_title.group_id = job_group.id";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY job_title.title ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jt.id, jt.title, jc.name AS category, jl.name AS level, jg.name AS job_group, jt.description, dpt.dept_name AS department, IF(jt.status = 1, 'Active','Inactive') AS status, jt.created_at, jt.updated_at",
+            'table' => 'job_title jt',
+            'joins' => [
+                'INNER JOIN department dpt ON dpt.dept_code = jt.department',
+                'INNER JOIN job_category jc ON jt.category_id = jc.id',
+                'INNER JOIN job_level jl ON jt.level_id = jl.id',
+                'INNER JOIN job_group jg ON jt.group_id = jg.id'
+            ],
+            'where' => $conditions,
+            'order' => 'jt.title ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSkills($conditions=[]){
-        $stmt = "SELECT * FROM skill";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "s.*",
+            'table' => 'skill s',
+            'where' => $conditions,
+            'order' => 's.name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobSkills($conditions=[]){
-        $stmt = "SELECT job_skill.id, job_title.title AS job_title, skill.name AS skill_name, job_skill.created_at, job_skill.updated_at FROM job_skill INNER JOIN job_title ON job_skill.job_title_id = job_title.id INNER JOIN skill ON job_skill.skill_id = skill.id";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY skill.name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "job_skill.id, job_title.title AS job_title, skill.name AS skill_name, job_skill.created_at, job_skill.updated_at",
+            'table' => 'job_skill',
+            'joins' => [
+                'INNER JOIN job_title ON job_skill.job_title_id = job_title.id',
+                'INNER JOIN skill ON job_skill.skill_id = skill.id'
+            ],
+            'where' => $conditions,
+            'order' => 'skill.name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getTrainingPrograms($conditions=[]){
-        $stmt = "SELECT tp.id, tp.school AS school_code, sch.school_name AS school_name, tp.program_code, tp.program_name, tp.facilitator_name, tp.start_date, tp.end_date, tp.status, tp.comment, tp.created_at, tp.updated_at FROM training_program tp INNER JOIN school sch ON tp.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, start_date DESC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "tp.id, tp.school AS school_code, sch.school_name AS school_name, tp.program_code, tp.program_name, tp.facilitator_name, tp.start_date, tp.end_date, tp.status, tp.comment, tp.created_at, tp.updated_at",
+            'table' => 'training_program tp',
+            'joins' => [
+                'INNER JOIN school sch ON tp.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, start_date DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getBenefitTypes($conditions=[]){
-        $stmt = "SELECT bt.id, bt.school AS school_code, sch.school_name AS school_name, bt.benefit_type_code, bt.benefit_type_name, IF(bt.is_recurring = 1, 'Yes', 'No') AS is_recurring, bt.recurring_type, bt.quantity, bt.created_at, bt.updated_at FROM benefit_type bt INNER JOIN school sch ON bt.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, benefit_type_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "bt.id, bt.school AS school_code, sch.school_name AS school_name, bt.benefit_type_code, bt.benefit_type_name, IF(bt.is_recurring = 1, 'Yes', 'No') AS is_recurring, bt.recurring_type, bt.quantity, bt.created_at, bt.updated_at",
+            'table' => 'benefit_type bt',
+            'joins' => [
+                'INNER JOIN school sch ON bt.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, benefit_type_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStaffBenefits($conditions=[]){
-        $stmt = "SELECT sb.id, sb.school AS school_code, sch.school_name AS school_name, sb.benefit_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, bt.benefit_type_name, sb.description, sb.effective_date, sb.status, sb.created_at, sb.updated_at FROM staff_benefit sb INNER JOIN benefit_type bt ON sb.benefit_type = bt.benefit_type_code INNER JOIN staff stf ON sb.staff_code = stf.staff_code INNER JOIN school sch ON sb.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, sb.staff_code, sb.benefit_type ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sb.id, sb.school AS school_code, sch.school_name AS school_name, sb.benefit_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, bt.benefit_type_name, sb.description, sb.effective_date, sb.status, sb.created_at, sb.updated_at",
+            'table' => 'staff_benefit sb',
+            'joins' => [
+                'INNER JOIN benefit_type bt ON sb.benefit_type = bt.benefit_type_code',
+                'INNER JOIN staff stf ON sb.staff_code = stf.staff_code',
+                'INNER JOIN school sch ON sb.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, sb.staff_code, sb.benefit_type ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getLeaveTypes($conditions=[]){
-        $stmt = "SELECT lt.id, lt.school AS school_code, sch.school_name AS school_name, lt.leave_type_code, lt.leave_type_name, lt.applies_to, lt.no_of_days_off, lt.maximum_leaves, lt.created_at, lt.updated_at FROM leave_type lt INNER JOIN school sch ON lt.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, leave_type_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "lt.id, lt.school AS school_code, sch.school_name AS school_name, lt.leave_type_code, lt.leave_type_name, lt.applies_to, lt.no_of_days_off, lt.maximum_leaves, lt.created_at, lt.updated_at",
+            'table' => 'leave_type lt',
+            'joins' => [
+                'INNER JOIN school sch ON lt.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, leave_type_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
-        return $this->response;
+        return $this->response;  
     }
     public function getLeaveApplications($conditions=[]){
-        $stmt = "SELECT lr.id, lr.school AS school_code, sch.school_name AS school_name, lr.leave_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, lt.leave_type_name, lr.start_date, lr.end_date, lr.approval_status, lr.reason, lr.comment, usr.displayname AS approved_by, usr.displayname AS rejected_by, lr.created_at, lr.updated_at FROM leave_request lr INNER JOIN leave_type lt ON lr.leave_type = lt.leave_type_code INNER JOIN school sch ON lr.school = sch.school_code INNER JOIN staff stf ON lr.staff_code = stf.staff_code JOIN user usr ON lr.approved_by = usr.userid OR lr.rejected_by = usr.userid";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, stf.staff_code ASC, lr.start_date ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "lr.id, lr.school AS school_code, sch.school_name AS school_name, lr.leave_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, lt.leave_type_name, lr.start_date, lr.end_date, lr.approval_status, lr.reason, lr.comment, usr.displayname AS approved_by, usr.displayname AS rejected_by, lr.created_at, lr.updated_at",
+            'table' => 'leave_request lr',
+            'joins' => [
+                'INNER JOIN leave_type lt ON lr.leave_type = lt.leave_type_code',
+                'INNER JOIN school sch ON lr.school = sch.school_code',
+                'INNER JOIN staff stf ON lr.staff_code = stf.staff_code',
+                'JOIN user usr ON lr.approved_by = usr.userid OR lr.rejected_by = usr.userid'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, stf.staff_code ASC, lr.start_date ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStaffTransferRequests($conditions=[]){
-        $stmt = "SELECT str.id, str.transfer_code, sch.school_name AS transfer_from, sch.school_name AS transfer_to, str.date_requested, CONCAT(stf.last_name, ' ', stf.first_name) AS requested_by, CONCAT(stf.last_name, ' ', stf.first_name) AS on_behalf_of, str.effective_date, str.approval_status, usr.displayname AS approved_by, usr.displayname AS rejected_by, str.comment, str.reason, str.created_at, str.updated_at FROM staff_transfer_request str INNER JOIN school sch ON str.transfer_from = sch.school_code OR str.transfer_to = sch.school_code LEFT JOIN staff stf ON str.requested_by = stf.staff_code OR str.on_behalf_of = stf.staff_code LEFT JOIN user usr ON str.approved_by = usr.userid OR str.rejected_by = usr.userid";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY str.transfer_from ASC, str.effective_date DESC, str.created_at DESC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "str.id, str.transfer_code, sch.school_name AS transfer_from, sch.school_name AS transfer_to, str.date_requested, CONCAT(stf.last_name, ' ', stf.first_name) AS requested_by, CONCAT(stf.last_name, ' ', stf.first_name) AS on_behalf_of, str.effective_date, str.approval_status, usr.displayname AS approved_by, usr.displayname AS rejected_by, str.comment, str.reason, str.created_at, str.updated_at",
+            'table' => 'staff_transfer_request str',
+            'joins' => [
+                'INNER JOIN school sch ON str.transfer_from = sch.school_code OR str.transfer_to = sch.school_code',
+                'LEFT JOIN staff stf ON str.requested_by = stf.staff_code OR str.on_behalf_of = stf.staff_code',
+                'LEFT JOIN user usr ON str.approved_by = usr.userid OR str.rejected_by = usr.userid'
+            ],
+            'where' => $conditions,
+            'order' => 'str.transfer_from ASC, str.effective_date DESC, str.created_at DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getLeaveBalances($conditions=[]){
-        $stmt = "SELECT lbl.id, lbl.school AS school_code, sch.school_name AS school_name, lbl.leave_balance_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, lt.leave_type_name, lbl.total_leave, lbl.leave_used, lbl.leave_remaining, lbl.created_at, lbl.updated_at FROM leave_balance lbl INNER JOIN leave_type lt ON lbl.leave_type = lt.leave_type_code INNER JOIN staff stf ON lbl.staff_code = stf.staff_code INNER JOIN school sch ON lbl.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, stf.staff_code ASC, lt.leave_type_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "lbl.id, lbl.school AS school_code, sch.school_name AS school_name, lbl.leave_balance_code, CONCAT(stf.last_name, ' ', stf.first_name) AS staff_name, lt.leave_type_name, lbl.total_leave, lbl.leave_used, lbl.leave_remaining, lbl.created_at, lbl.updated_at",
+            'table' => 'leave_balance lbl',
+            'joins' => [
+                'INNER JOIN leave_type lt ON lbl.leave_type = lt.leave_type_code',
+                'INNER JOIN staff stf ON lbl.staff_code = stf.staff_code',
+                'INNER JOIN school sch ON lbl.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, stf.staff_code ASC, lt.leave_type_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobPostings($conditions=[]){
-        $stmt = "SELECT jp.id, jp.school AS school_code, sch.school_name, dept.dept_name, jp.job_posting_code, jt.title AS job_title, jp.vacant_posts, jp.posting_date, jp.closing_date, jp.description, jp.employment_type, jp.location, jp.salary_range, jp.status, jp.created_at, jp.updated_at FROM job_posting jp INNER JOIN school sch ON jp.school = sch.school_code INNER JOIN department dept ON jp.department = dept.dept_code INNER JOIN job_title jt ON jp.job_title = jt.id";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, job_title ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jp.id, jp.school AS school_code, sch.school_name, dept.dept_name, jp.job_posting_code, jt.title AS job_title, jp.vacant_posts, jp.posting_date, jp.closing_date, jp.description, jp.employment_type, jp.location, jp.salary_range, jp.status, jp.created_at, jp.updated_at",
+            'table' => 'job_posting jp',
+            'joins' => [
+                'INNER JOIN school sch ON jp.school = sch.school_code',
+                'INNER JOIN department dept ON jp.department = dept.dept_code',
+                'INNER JOIN job_title jt ON jp.job_title = jt.id'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, job_title ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getNews($conditions=[]){
-        $stmt = "SELECT n.id, n.school AS school_code, sch.school_name, n.title, n.content, n.category, n.image, n.created_at, n.published_by FROM news n INNER JOIN school sch ON n.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, title ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "n.id, n.school AS school_code, sch.school_name, n.title, n.content, n.category, n.image, n.created_at, n.published_by",
+            'table' => 'news n',
+            'joins' => [
+                'INNER JOIN school sch ON n.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, title ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobApplicants($conditions=[]){
-        $stmt = "SELECT DISTINCT ja.id, ja.applicant_code, ja.applicant_name, ja.contact_phone, ja.contact_email, ja.created_at, ja.updated_at FROM job_applicant ja";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY applicant_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "ja.id, ja.applicant_code, ja.applicant_name, ja.contact_phone, ja.contact_email, ja.created_at, ja.updated_at",
+            'table' => 'job_applicant ja',
+            'where' => $conditions,
+            'order' => 'applicant_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getJobApplications($conditions=[]){
-        $stmt = "SELECT DISTINCT jba.id, sch.school_code, sch.school_name, ja.applicant_name, jp.job_posting_code, jt.title AS job_title, jba.resume, jba.cover_letter, jba.application_status, jba.comment, jba.created_at, jba.updated_at FROM job_application jba INNER JOIN job_posting jp ON jba.job_posting_code = jp.job_posting_code INNER JOIN job_applicant ja ON jba.applicant_code = ja.applicant_code INNER JOIN job_title jt ON jp.job_title = jt.id INNER JOIN school sch ON jp.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, job_posting_code ASC, applicant_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "jba.id, sch.school_code, sch.school_name, ja.applicant_name, jp.job_posting_code, jt.title AS job_title, jba.resume, jba.cover_letter, jba.application_status, jba.comment, jba.created_at, jba.updated_at",
+            'table' => 'job_application jba',
+            'joins' => [
+                'INNER JOIN job_posting jp ON jba.job_posting_code = jp.job_posting_code',
+                'INNER JOIN job_applicant ja ON jba.applicant_code = ja.applicant_code',
+                'INNER JOIN job_title jt ON jp.job_title = jt.id',
+                'INNER JOIN school sch ON jp.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, job_posting_code ASC, applicant_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getTerms($conditions=[]){
-        $stmt = "SELECT DISTINCT t.id, t.term_code, t.term_name, t.opening_date, t.closing_date FROM term t";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY term_code ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "DISTINCT t.id, t.term_code, t.term_name, t.opening_date, t.closing_date",
+            'table' => 'term t',
+            'where' => $conditions,
+            'order' => 'term_code ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getClassesFromTemplate($school){
-        $stmt = "SELECT DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order, cl.class_number FROM class cl INNER JOIN academic_level al ON cl.level = al.level_name WHERE cl.class_code NOT IN (SELECT class FROM school_class WHERE school = ?) ORDER BY al.stage_order DESC, class_number DESC";
-        $params = [$school];
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        // $stmt = "SELECT DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order, cl.class_number FROM class cl INNER JOIN academic_level al ON cl.level = al.level_name WHERE cl.class_code NOT IN (SELECT class FROM school_class WHERE school = ?) ORDER BY al.stage_order DESC, class_number DESC";
+        // $params = [$school];
+        // $num_rows = $this->numRows(query: $stmt, params: $params);
+        // if($num_rows>0){
+        //     $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        // }else{$this->response = ["status"=>false, "message"=>"No records found"];}
+        // return $this->response;
+        $result = $this->select([
+            'columns' => "DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order",
+            'table' => 'class cl',
+            'joins' => [
+                "INNER JOIN academic_level al ON cl.level = al.level_name",
+                "LEFT JOIN school_class sc ON sc.class = cl.class_code AND sc.school = '$school'"
+            ],
+            'where' => ['sc.class IS NULL', 'cl.is_template = 1', 'cl.is_active = 1'],
+            'order' => 'al.stage_order DESC, class_number DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -1841,242 +1930,339 @@ class DataManipulation extends User{
             'where'   => $conditions,
             'order'   => 'school_code ASC, class_number ASC'
         ]);
-        if($result['status']){
+        if($result['status'] || sizeof($result['data']) > 0){
             $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStreams($conditions=[]){
-        $stmt = "SELECT DISTINCT s.id, sch.school_code, sch.school_name, sc.class, c.class_name, s.stream_code, s.stream_name, s.description, s.capacity, CONCAT(t.last_name, ' ', t.first_name) AS class_teacher, s.created_at, s.updated_at FROM stream s INNER JOIN school_class sc ON s.class = sc.class INNER JOIN class c ON sc.class = c.class_code LEFT JOIN school sch ON sch.school_code = s.school LEFT JOIN teacher t ON s.class_teacher = t.teacher_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY sch.school_code ASC, s.class ASC, class_name ASC, stream_code ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "DISTINCT s.id, sch.school_code, sch.school_name, sc.class, c.class_name, s.stream_code, s.stream_name, s.description, s.capacity, CONCAT(t.last_name, ' ', t.first_name) AS class_teacher, s.created_at, s.updated_at",
+            'table'   => 'stream s',
+            'joins'   => [
+                'INNER JOIN school_class sc ON s.class = sc.class',
+                'INNER JOIN class c ON sc.class = c.class_code',
+                'LEFT JOIN school sch ON sch.school_code = s.school',
+                'LEFT JOIN teacher t ON s.class_teacher = t.teacher_code'
+            ],
+            'where'   => $conditions,
+            'order'   => 'sch.school_code ASC, s.class ASC, class_name ASC, stream_code ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSubjects($conditions=[]){
-        $stmt = "SELECT sbj.id, sbj.subject_code, sbj.subject_name, al.level_name AS level_name, al.stage_order AS stage_order, p.pathway, sbj.category FROM `subject` sbj INNER JOIN `academic_level` al ON sbj.level = al.level_name LEFT JOIN pathway p ON p.id = sbj.pathway";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY stage_order DESC, subject_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sbj.id, sbj.subject_code, sbj.subject_name, sbj.abbrev, sbj.curriculum, al.level_name AS level_name, al.stage_order AS stage_order, p.pathway, sbj.category, sbj.passing_mark, IF(sbj.is_active, 'Yes', 'No') AS is_active, sbj.description, sbj.created_at, sbj.updated_at",
+            'table'   => 'subject sbj',
+            'joins'   => [
+                'INNER JOIN academic_level al ON sbj.level = al.level_name',
+                'LEFT JOIN pathway p ON p.id = sbj.pathway'
+            ],
+            'where'   => $conditions,
+            'order'   => 'stage_order DESC, subject_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getDepartments($conditions=[]){
-        $stmt = "SELECT * FROM department ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, dept_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "d.*",
+            'table' => 'department d',
+            'where' => $conditions,
+            'order' => 'school_code ASC, dept_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSubjectDepartments($conditions=[]){
-        $stmt = "SELECT * FROM subject_department ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, dept_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sd.*",
+            'table' => 'subject_department sd',
+            'where' => $conditions,
+            'order' => 'school_code ASC, dept_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSubjectGroups($conditions=[]){
-        $stmt = "SELECT * FROM subject_group ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, group_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sg.*",
+            'table' => 'subject_group sg',
+            'where' => $conditions,
+            'order' => 'school_code ASC, group_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStudents($conditions=[]){
-        $stmt = "SELECT DISTINCT std.id, CONCAT(std.school,' - ', sch.school_name) AS school, std.adm_no, std.assessment_no, std.first_name, std.surname, std.last_name, std.gender, std.dob, std.doa, std.exit_date, std.birth_cert_no, std.nationality, std.religion, std.profile_picture, std.status, sc.class AS class_code, c.class_name AS class, s.stream_code, s.stream_name AS stream, t.term_name AS term, ce.year FROM student std INNER JOIN school sch ON std.school = sch.school_code LEFT JOIN class_enrollment ce ON ce.adm_no = std.adm_no LEFT JOIN stream s ON s.stream_code = ce.stream LEFT JOIN school_class sc ON ce.class = sc.class LEFT JOIN class c ON ce.class = c.class_code LEFT JOIN term t ON ce.term = t.term_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school ASC, class DESC, stream ASC, adm_no ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "DISTINCT std.id, CONCAT(std.school,' - ', sch.school_name) AS school, std.adm_no, std.assessment_no, std.first_name, std.surname, std.last_name, std.gender, std.dob, std.doa, std.exit_date, std.birth_cert_no, std.nationality, std.religion, std.profile_picture, std.status, sc.class AS class_code, c.class_name AS class, s.stream_code, s.stream_name AS stream, t.term_name AS term, ce.year",
+            'table' => 'student std',
+            'joins' => [
+                'INNER JOIN school sch ON std.school = sch.school_code',
+                'LEFT JOIN class_enrollment ce ON ce.adm_no = std.adm_no',
+                'LEFT JOIN stream s ON s.stream_code = ce.stream',
+                'LEFT JOIN school_class sc ON ce.class = sc.class',
+                'LEFT JOIN class c ON ce.class = c.class_code',
+                'LEFT JOIN term t ON ce.term = t.term_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school ASC, class DESC, stream ASC, adm_no ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function mapStudentToClass($school, $adm_no, $class, $stream, $term, $year){
-        $stmt = "SELECT id FROM class_enrollment WHERE school = ? AND adm_no = ? AND class = ? AND stream = ? AND term = ? AND year = ? ";
-        $num_rows = $this->numRows(query: $stmt, params: [$school, $adm_no, $class, $stream, $term, $year]);
-        if($num_rows<1){
+        // $stmt = "SELECT id FROM class_enrollment WHERE school = ? AND adm_no = ? AND class = ? AND stream = ? AND term = ? AND year = ? ";
+        // $num_rows = $this->numRows(query: $stmt, params: [$school, $adm_no, $class, $stream, $term, $year]);
+        // if($num_rows<1){
+        //     if($this->executeInsert('class_enrollment', ['school'=>$school, 'adm_no'=>$adm_no, 'class'=>$class, 'stream'=>$stream, 'term'=>$term, 'year'=>$year])['status']){
+        //         $this->response = ["status"=>true, "message"=>"$adm_no successfully mapped to $class $stream"];
+        //     } else {
+        //         $this->response = ["status"=>false, "message"=>"Unable to map $adm_no to $class $stream"];
+        //     }
+        // }else{ $this->response = ["status"=>false, "message"=>"$adm_no already exists in $class $stream"];}
+        // return $this->response;
+
+        $result = $this->select([
+            'columns' => "id",
+            'table' => 'class_enrollment',
+            'where' => ['school'=>$school, 'adm_no'=>$adm_no, 'class'=>$class, 'stream'=>$stream, 'term'=>$term, 'year'=>$year]
+        ]);
+        if($result['status'] && sizeof($result['data']) > 0){
+            $this->response = ["status"=>false, "message"=>"$adm_no already exists in $class $stream"];
+        }else{
             if($this->executeInsert('class_enrollment', ['school'=>$school, 'adm_no'=>$adm_no, 'class'=>$class, 'stream'=>$stream, 'term'=>$term, 'year'=>$year])['status']){
                 $this->response = ["status"=>true, "message"=>"$adm_no successfully mapped to $class $stream"];
             } else {
                 $this->response = ["status"=>false, "message"=>"Unable to map $adm_no to $class $stream"];
             }
-        }else{ $this->response = ["status"=>false, "message"=>"$adm_no already exists in $class $stream"];}
+        }
         return $this->response;
     }
     public function getTeachers($conditions=[]){
-        $stmt = "SELECT t.id, t.school AS school_code, sch.school_name, t.teacher_code, t.first_name, t.last_name, t.gender, t.email, t.phone, t.id_no, t.hire_date, t.emp_term, t.status FROM teacher t INNER JOIN school sch ON t.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, first_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "t.id, t.school AS school_code, sch.school_name, t.teacher_code, t.first_name, t.last_name, t.gender, t.email, t.phone, t.id_no, t.hire_date, t.emp_term, t.status",
+            'table' => "teacher t",     
+            'joins' => [
+                'INNER JOIN school sch ON t.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, first_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSupportStaffs($conditions=[]){
-        $stmt = "SELECT sst.id, sst.school AS school_code, sch.school_name, sst.staff_code, sst.first_name, sst.last_name, sst.gender, sst.email, sst.phone,  sst.id_no, sst.hire_date, sst.emp_term, sst.status FROM support_staff sst INNER JOIN school sch ON sst.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, first_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sst.id, sst.school AS school_code, sch.school_name, sst.staff_code, sst.first_name, sst.last_name, sst.gender, sst.email, sst.phone,  sst.id_no, sst.hire_date, sst.emp_term, sst.status",
+            'table' => "support_staff sst",     
+            'joins' => [
+                'INNER JOIN school sch ON sst.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, first_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStaffs($conditions=[]){
-        $stmt = "SELECT stf.id, stf.school AS school_code, sch.school_name, stf.staff_code, stf.first_name, stf.last_name, stf.gender, stf.email, stf.phone, stf.id_no, jt.id, jt.title AS job_title, stf.role, stf.hire_date, stf.department, dept.dept_name, stf.status, stf.emp_term, stf.profile_picture AS passport_url FROM staff stf INNER JOIN job_title jt ON stf.job_title = jt.id INNER JOIN school sch ON stf.school = sch.school_code INNER JOIN department dept ON stf.department = dept.dept_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, first_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "stf.id, stf.school AS school_code, sch.school_name, stf.staff_code, stf.first_name, stf.last_name, stf.gender, stf.email, stf.phone, stf.id_no, jt.id, jt.title AS job_title, stf.role, stf.hire_date, stf.department, dept.dept_name, stf.status, stf.emp_term, stf.profile_picture AS passport_url",
+            'table' => "staff stf",     
+            'joins' => [
+                'INNER JOIN job_title jt ON stf.job_title = jt.id',
+                'INNER JOIN school sch ON stf.school = sch.school_code',
+                'INNER JOIN department dept ON stf.department = dept.dept_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, first_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getVendors($conditions=[]){
-        $stmt = "SELECT v.id, v.school AS school_code, sch.school_name, v.vendor_no, v.vendor_name, v.contact_email, v.contact_phone, v.physical_address, v.created_at, v.updated_at FROM vendor v INNER JOIN school sch ON v.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, vendor_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "v.id, v.school AS school_code, sch.school_name, v.vendor_no, v.vendor_name, v.contact_email, v.contact_phone, v.physical_address, v.created_at, v.updated_at",
+            'table' => "vendor v",
+            'joins' => [
+                'INNER JOIN school sch ON v.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, vendor_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getDocumentUploads($conditions=[]){
-        $stmt = "SELECT sf.id, sf.school AS school_code, sch.school_name, sf.file_id, CONCAT(stf.first_name, ' ', stf.last_name) AS staff_name, sf.document_type, sf.file_path, sf.uploaded_at, sf.updated_at FROM staff_file sf INNER JOIN school sch ON sf.school = sch.school_code INNER JOIN staff stf ON sf.staff = stf.staff_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, staff_name ASC, document_type ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "sf.id, sf.school AS school_code, sch.school_name, sf.file_id, CONCAT(stf.first_name, ' ', stf.last_name) AS staff_name, sf.document_type, sf.file_path, sf.uploaded_at, sf.updated_at",
+            'table' => 'staff_file sf',
+            'joins' => [
+                'INNER JOIN school sch ON sf.school = sch.school_code',
+                'INNER JOIN staff stf ON sf.staff = stf.staff_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, staff_name ASC, document_type ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getUnitCategories($conditions=[]){
-        $stmt = "SELECT uc.id, uc.name AS unit_category, uc.description, uc.is_active, uc.created_at, uc.updated_at FROM unit_category uc";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY unit_category ASC, description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "uc.id, uc.name AS unit_category, uc.description, uc.is_active, uc.created_at, uc.updated_at",
+            'table' => 'unit_category uc',
+            'where' => $conditions,
+            'order' => 'unit_category ASC, description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getItemCategories($conditions=[]){
-        $stmt = "SELECT ic.id, ic.name AS item_category, ic.description, ic.is_active, ic.created_at, ic.updated_at FROM item_category ic";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY item_category ASC, description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "ic.id, ic.name AS item_category, ic.description, ic.is_active, ic.created_at, ic.updated_at",
+            'table' => 'item_category ic',
+            'where' => $conditions,
+            'order' => 'item_category ASC, description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getBaseUOMs($conditions=[]){
-        $stmt = "SELECT buom.id, buom.name AS base_uom, buom.abbreviation, buom.category_id, ic.name AS category_name, buom.description, buom.symbol, buom.si_unit, buom.is_active, buom.created_at, buom.updated_at FROM base_unit_of_measure buom INNER JOIN item_category ic ON buom.category_id = ic.id ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY base_uom ASC, description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "buom.id, buom.name AS base_uom, buom.abbreviation, buom.category_id, ic.name AS category_name, buom.description, buom.symbol, buom.si_unit, buom.is_active, buom.created_at, buom.updated_at",
+            'table' => 'base_unit_of_measure buom',
+            'joins' => [
+                'INNER JOIN item_category ic ON buom.category_id = ic.id'
+            ],
+            'where' => $conditions,
+            'order' => 'base_uom ASC, description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getItemUOMs($conditions=[]){
-        $stmt = "SELECT uom.id, uom.name AS item_uom, uom.abbreviation, uom.base_unit_id, CONCAT(buom.name, ' (',buom.abbreviation,')') AS base_uom, uom.conversion_factor, uom.is_default, uom.is_compound, uom.compound_structure, uom.description, uom.is_active, uom.created_at, uom.updated_at FROM unit_of_measure uom INNER JOIN base_unit_of_measure buom ON uom.base_unit_id = buom.id ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY item_uom ASC, description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "uom.id, uom.name AS item_uom, uom.abbreviation, uom.base_unit_id, CONCAT(buom.name, ' (',buom.abbreviation,')') AS base_uom, uom.conversion_factor, uom.is_default, uom.is_compound, uom.compound_structure, uom.description, uom.is_active, uom.created_at, uom.updated_at",
+            'table' => 'unit_of_measure uom',
+            'joins' => [
+                'INNER JOIN base_unit_of_measure buom ON uom.base_unit_id = buom.id'
+            ],
+            'where' => $conditions,
+            'order' => 'item_uom ASC, description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getStockItems($conditions=[]){
-        $stmt = "SELECT itm.id, itm.school AS school_code, sch.school_name, itm.name AS item_name, itm.description, itm.category_id, ic.name AS item_category, itm.type AS item_type, itm.base_unit_of_measure_id, CONCAT(buom.name, ' (',buom.abbreviation,')') AS base_uom, itm.is_active, itm.purchase_cost, itm.is_depreciable, itm.depreciation_rate, itm.quantity_in_stock, itm.reorder_level, itm.asset_tag, itm.purchase_date, itm.last_service_date, itm.expected_service_lifetime, itm.created_at, itm.updated_at FROM stock_item itm INNER JOIN school sch ON itm.school = sch.school_code INNER JOIN item_category ic ON itm.category_id = ic.id INNER JOIN base_unit_of_measure buom ON itm.base_unit_of_measure_id = buom.id ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school ASC, item_type ASC, item_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "itm.id, itm.school AS school_code, sch.school_name, itm.name AS item_name, itm.description, itm.category_id, ic.name AS item_category, itm.type AS item_type, itm.base_unit_of_measure_id, CONCAT(buom.name, ' (',buom.abbreviation,')') AS base_uom, itm.is_active, itm.purchase_cost, itm.is_depreciable, itm.depreciation_rate, itm.quantity_in_stock, itm.reorder_level, itm.asset_tag, itm.purchase_date, itm.last_service_date, itm.expected_service_lifetime, itm.created_at, itm.updated_at",
+            'table' => 'stock_item itm',
+            'joins' => [
+                'INNER JOIN school sch ON itm.school = sch.school_code',
+                'INNER JOIN item_category ic ON itm.category_id = ic.id',
+                'INNER JOIN base_unit_of_measure buom ON itm.base_unit_of_measure_id = buom.id'
+            ],
+            'where' => $conditions,
+            'order' => 'school ASC, item_type ASC, item_name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     
     // Finance module
     public function getBankAccounts($conditions=[]){
-        $stmt = "SELECT ba.id, ba.school AS school_code, sch.school_name AS school_name, ba.name, ba.account_number, ba.bank_name, ba.branch, ba.currency FROM bank_account ba INNER JOIN school sch ON ba.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school ASC, account_number ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "ba.id, ba.school AS school_code, sch.school_name AS school_name, ba.name, ba.account_number, ba.bank_name, ba.branch, ba.currency",
+            'table' => 'bank_account ba',
+            'joins' => [
+                'INNER JOIN school sch ON ba.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school ASC, account_number ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getChartOfAccounts($conditions=[]){
-        $stmt = "SELECT coa.id, coa.school AS school_code, sch.school_name, coa.no, coa.name, coa.type, coa.category, coa.parent, coa.typical_balance, coa.opening_balance, IF(coa.is_active = 1, 'Yes', 'No') AS is_active, coa.created_at, coa.updated_at, usr.displayname AS updated_by FROM chart_of_account coa INNER JOIN school sch ON coa.school = sch.school_code LEFT JOIN user usr ON coa.updated_by = usr.userid";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY type ASC, no ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "coa.id, coa.school AS school_code, sch.school_name, coa.no, coa.name, coa.type, coa.category, coa.parent, coa.typical_balance, coa.opening_balance, IF(coa.is_active = 1, 'Yes', 'No') AS is_active, coa.created_at, coa.updated_at, usr.displayname AS updated_by",
+            'table' => 'chart_of_account coa',
+            'joins' => [
+                'INNER JOIN school sch ON coa.school = sch.school_code',
+                'LEFT JOIN user usr ON coa.updated_by = usr.userid'
+            ],
+            'where' => $conditions,
+            'order' => 'type ASC, no ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSchoolCharges($conditions=[]){
-        $stmt = "SELECT c.id, c.school AS school_code, sch.school_name, c.charge_code, c.description, c.type, c.is_recurring, c.recurring_type, c.income_gl_account, c.expense_gl_account, dept.dept_name, c.normal_charge, c.insurance_charge, c.special_charge, c.special_from, c.special_to, c.status FROM charge c INNER JOIN school sch ON c.school = sch.school_code LEFT JOIN department dept ON c.department = dept.dept_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, description ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "c.id, c.school AS school_code, sch.school_name, c.charge_code, c.description, c.type, c.is_recurring, c.recurring_type, c.income_gl_account, c.expense_gl_account, dept.dept_name, c.normal_charge, c.insurance_charge, c.special_charge, c.special_from, c.special_to, c.status",
+            'table' => 'charge c',
+            'joins' => [
+                'INNER JOIN school sch ON c.school = sch.school_code',
+                'LEFT JOIN department dept ON c.department = dept.dept_code'
+            ],
+            'where' => $conditions,
+            'order' => 'school_code ASC, description ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getTaxRates($conditions=[]){
-        $stmt = "SELECT tr.id, tr.school AS school_code, sch.school_name AS school_name, tr.name, tr.rate, tr.type FROM tax tr INNER JOIN school sch ON tr.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY type DESC, name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "tr.id, tr.school AS school_code, sch.school_name AS school_name, tr.name, tr.rate, tr.type",
+            'table' => 'tax tr',
+            'joins' => [
+                'INNER JOIN school sch ON tr.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'type DESC, name ASC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -2088,18 +2274,28 @@ class DataManipulation extends User{
         }
     }
     public function registerApplicant($applicant_code, $applicant_name, $contact_phone, $contact_email){
-        $stmt = "SELECT id FROM job_applicant WHERE applicant_code = ? OR contact_phone = ? OR contact_email = ?";
-        $num_rows = $this->numRows(query: $stmt, params: [$applicant_code, $contact_phone, $contact_email]);
-        if($num_rows<1){
+        $result = $this->select([
+            'columns' => "id",
+            'table' => 'job_applicant',
+            'where' => ["applicant_code = '$applicant_code'", "contact_phone = '$contact_phone'", "contact_email = '$contact_email'"]
+        ]);
+        if($result['status'] && sizeof($result['data']) > 0){
+            return ["status"=>"warning","message"=> "Client already exists"];
+        }else{
             if($this->executeInsert('job_applicant', ["applicant_code"=>$applicant_code, "applicant_name"=>$applicant_name, "contact_phone"=>$contact_phone, "contact_email"=>$contact_email])['status']){
                 return ["status"=>"success","message"=> "Applicant registered successfully"];
             }else{ return ["status"=>"error","message"=> "Unable to register client"];}
-        }else{ return ["status"=>"warning","message"=> "Client already exists"];}
+        }
     }
     public function applyForJob($applicant_code, $job_posting_code, $resume, $cover_letter){
-        $stmt = "SELECT id FROM job_application WHERE applicant_code = ? AND job_posting_code = ?";
-        $num_rows = $this->numRows(query: $stmt, params: [$applicant_code, $job_posting_code]);
-        if($num_rows<1){
+        $result = $this->select([
+            'columns' => "id",
+            'table' => 'job_application',
+            'where' => ["applicant_code = '$applicant_code'", "job_posting_code = '$job_posting_code'"]
+        ]);
+        if($result['status'] && sizeof($result['data']) > 0){
+            return ["status"=>"warning","message"=> "You already submitted an application for this post"];
+        }else{
             $rus = $this->upload($resume);
             $clus = $this->upload($cover_letter);
             if($rus["status"] == FALSE){
@@ -2113,16 +2309,20 @@ class DataManipulation extends User{
             if($this->executeInsert('job_application', ["applicant_code"=>$applicant_code, "job_posting_code"=>$job_posting_code, "resume"=>$resume_name, "cover_letter"=>$cover_letter_name])['status']){
                  return ["status"=>"success","message"=> "Application submitted successfully"];
             }else{ return ["status"=>"error","message"=> "Unable to submit application"];}
-        }else{ return ["status"=>"warning","message"=> "You already submitted an application for this post"];}
+        }
     }
     public function getAcademicSessions($conditions=[]){
-        $stmt = "SELECT acds.id, acds.school AS school_code, sch.school_name AS school_name, acds.session_code, acds.session_name, acds.year, acds.start_date, acds.end_date, acds.term_no, acds.status FROM academic_session acds INNER JOIN school sch ON acds.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY acds.school ASC, acds.year DESC, acds.term_no DESC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "acds.id, acds.school AS school_code, sch.school_name AS school_name, acds.session_code, acds.session_name, acds.year, acds.start_date, acds.end_date, acds.term_no, acds.status",
+            'table' => 'academic_session acds',
+            'joins' => [
+                'INNER JOIN school sch ON acds.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'acds.school ASC, acds.year DESC, acds.term_no DESC'
+        ]);
+        if($result['status'] || sizeof($result['data']) > 0){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
 	}
@@ -2137,7 +2337,9 @@ class DataManipulation extends User{
         $stmt = "SHOW COLUMNS FROM ".$table." WHERE Field = ? ";
         $num_rows = $this->numRows(query: $stmt, params: [$column]);
         if($num_rows>0){
-            $row = $this->readData(query: $stmt, params: [$column]);
+            $stmt = $this->pdo->prepare(query: $stmt);
+            $stmt->execute(params: [$column]);
+            $row = $stmt->fetch(mode: PDO::FETCH_ASSOC);
             if($row && isset($row['Type'])){
                 $data = str_getcsv(trim($row['Type'], "enum()"), ",", "'", "\\");
                 // if (is_array($data)) { sort($data);
@@ -2178,14 +2380,28 @@ class Timetable{
     private function generateForStream($school, $session, $class, $stream) {
         // Get subjects for this class
         try {
-            $rows = $this->db->readData_array("SELECT * FROM class_subject WHERE school=? AND class=?", [$school['school_code'],$class->class]);
+            $rows = $this->db->select([
+                'columns' => "cs.*, sbj.subject_name",
+                'table' => 'class_subject cs',
+                'joins' => [
+                    'INNER JOIN subject sbj ON cs.subject = sbj.subject_code'
+                ],
+                'where' => ["cs.school = '{$school['school_code']}'", "cs.class = '{$class->class}'"]
+            ])['data'];
 
             foreach ($rows as $row) {
                 $subjectId = $row['subject'];
                 $lessons = $row['lessons_per_week'];
 
                 // Pick a teacher
-                $teacherRow = $this->db->readData("SELECT teacher FROM subject_teacher WHERE school=? AND subject=? LIMIT 1", [$school['school_code'],$subjectId]);
+                $teacherRow = $this->db->select([
+                    'columns' => "teacher",
+                    'table' => 'subject_teacher',
+                    'where' => ["school='{$school['school_code']}'", "subject='{$subjectId}'"],
+                    'order' => 'RAND()',
+                    'limit' => 1
+                ])['data'];
+                $teacherRow = is_array($teacherRow) && isset($teacherRow[0]) ? $teacherRow[0] : null;
                 if (!$teacherRow) continue;
                 $teacherId = $teacherRow['teacher'];
 
@@ -2215,7 +2431,12 @@ class Timetable{
 
     private function findSlot($school, $class, $stream, $subject, $teacher, $remaining) {
         try {
-            $subjectPref = $this->db->readData("SELECT * FROM subject_preference WHERE school=? AND subject=?", [$school['school_code'], $subject]);
+            $subjectPref = $this->db->select([
+                'columns' => "*",
+                'table' => 'subject_preference',
+                'where' => ["school='{$school['school_code']}'", "subject='{$subject}'"],
+                'limit' => 1
+            ])['data'];
             $subjectPref = is_array($subjectPref) && isset($subjectPref[0]) ? $subjectPref[0] : null;
 
             for ($day = 1; $day <= $school['days_per_week']; $day++) {

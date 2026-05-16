@@ -312,47 +312,79 @@ function updateCompanyBasicInfo() {
     var form = document.querySelector('#frmCompanyBasicInfo');
     var rules = {
         school_name: {required: true},
-        address: { required: true },
+        county: {required: true},
+        sub_county: {required: true},
+        ward: {required: true},
+        kra_pin: {required: true},
+        reg_no: {required: true},
+        emis_code: {required: true},
+        knec_centre_no: {required: true},
+        curriculum: {required: true},
+        level: {required: true},
+        gender: {required: true},
+        boarding_status: {required: true},
+        type: {required: true},
+        address: {required: true},
+        longitude: {required: true},
+        latitude: {required: true},
+        motto: { required: true },
+        mission: { required: true },
+        vision: { required: true },
+        core_values: { required: true },
         logo: { required: true }
     };
     var messages = {
         school_name: {required: "This field is required"},
-        address: { required: "This field is required" },
+        county: {required: "This field is required"},
+        sub_county: {required: "This field is required"},
+        ward: {required: "This field is required"},
+        kra_pin: {required: "This field is required"},
+        reg_no: {required: "This field is required"},
+        emis_code: {required: "This field is required"},
+        knec_centre_no: {required: "This field is required"},
+        curriculum: {required: "This field is required"},
+        level: {required: "This field is required"},
+        gender: {required: "This field is required"},
+        boarding_status: {required: "This field is required"},
+        type: {required: "This field is required"},
+        address: {required: "This field is required"},
+        longitude: {required: "This field is required"},
+        latitude: {required: "This field is required"},
+        motto: { required: "This field is required" },
+        mission: { required: "This field is required" },
+        vision: { required: "This field is required" },
+        core_values: { required: "This field is required" },
         logo: { required: "Upload school logo" }
     };
     submitData(form, rules, messages);
 }
 
-function updateCompanyContactInfo() {
-    var form = document.querySelector('#frmCompanyContactInfo');
+function SaveCompanyContact() {
+    var form = document.querySelector('#frmNewCompanyContact');
     var rules = {
-        mail: { required: true, email: true },
-        contact: { required: true, number: true, minlength: 10, maxlength: 10 }
+        school: { required: true },
+        contact_type: { required: true },
+        contact_value: { required: true, minlength: 10, maxlength: 100 }
     };
     var messages = {
-        mail: { required: "This field is required", email: "Invalid email address" },
-        contact: { required: "This field is required", number: "Invalid contact", minlength: "Contact too short", maxlength: "Contact too long" }
+        school: { required: "This field is required" },
+        contact_type: { required: "This field is required" },
+        contact_value: { required: "This field is required", minlength: "Contact too short", maxlength: "Contact too long" }
     };
     submitData(form, rules, messages);
 }
 
-function updateCompanySocialInfo() {
-    var form = document.querySelector('#frmCompanySocialInfo');
+function SaveCompanySocial() {
+    var form = document.querySelector('#frmNewCompanySocial');
     var rules = {
-        facebook: { maxlength: 100 },
-        twitter: { maxlength: 100 },
-        instagram: { maxlength: 100 },
-        linkedin: { maxlength: 100 },
-        skype: { maxlength: 100 },
-        website: { maxlength: 100 }
+        school: { required: true, maxlength: 8 },
+        platform: { required: true, maxlength: 10 },
+        account_link: { required: true, maxlength: 255 }
     };
     var messages = {
-        facebook: { maxlength: "facebook link too long" },
-        twitter: { maxlength: "twitter link too long" },
-        instagram: { maxlength: "instagram link too long" },
-        linkedin: { maxlength: "linkedin link too long" },
-        skype: { maxlength: "skype link too long" },
-        website: { maxlength: "website link too long" }
+        school: { required: "This field is required", maxlength: "School code too long" },
+        platform: { required: "This field is required", maxlength: "Platform name too long" },
+        account_link: { required: "This field is required", maxlength: "Account link too long" }
     };
     submitData(form, rules, messages);
 }
