@@ -196,29 +196,73 @@ function drawCardFront(TCPDF $pdf, array $student, array $info){
     $pdf->SetLineWidth(0.6);
     $pdf->Rect(2, 18, 22, 27);
 
+    // try {
+    //     if (!empty($student['photo'])) {
+
+    //         // Convert URL → server path
+    //         $photoPath = parse_url($student['photo'], PHP_URL_PATH);
+    //         $originalPhoto = $_SERVER['DOCUMENT_ROOT'] . $photoPath;
+
+    //         $normalizedDir = __DIR__ . "/ids/photos/";
+    //         if (!is_dir($normalizedDir)) {
+    //             mkdir($normalizedDir, 0777, true);
+    //         }
+
+    //         $normalized = $normalizedDir . $info['school_code'] . "_" . $admNo . ".jpg";
+
+    //         if (file_exists($originalPhoto)) {
+    //             if (file_exists($normalized)) { unlink($normalized); }
+    //             normalizeStudentPhoto($originalPhoto, $normalized);
+    //             $pdf->Image($normalized, 2, 18, 22, 27);
+                
+    //         }
+    //     }
+    // } catch (Exception $e) {
+    //     $dmo->log("Could not find passport photo for Adm. No: $admNo");
+    // }
     try {
         if (!empty($student['photo'])) {
 
-            // Convert URL → server path
+            // Convert URL → physical path
             $photoPath = parse_url($student['photo'], PHP_URL_PATH);
             $originalPhoto = $_SERVER['DOCUMENT_ROOT'] . $photoPath;
 
-            $normalizedDir = __DIR__ . "/ids/photos/";
-            if (!is_dir($normalizedDir)) {
-                mkdir($normalizedDir, 0777, true);
-            }
+            // Normalized directory
+            $normalizedDir = __DIR__ . "/ids/photos/normalized/";
 
+            if (!is_dir($normalizedDir)) { mkdir($normalizedDir, 0777, true); }
+            // Normalized image path
             $normalized = $normalizedDir . $info['school_code'] . "_" . $admNo . ".jpg";
 
             if (file_exists($originalPhoto)) {
-                if (file_exists($normalized)) { unlink($normalized); }
-                normalizeStudentPhoto($originalPhoto, $normalized);
-                $pdf->Image($normalized, 2, 18, 22, 27);
-                
+                $needsNormalization = false;
+
+                // If normalized image missing
+                if (!file_exists($normalized)) {
+                    $needsNormalization = true;
+                } else {
+                    // Re-normalize ONLY if original photo changed
+                    $originalModified   = filemtime($originalPhoto);
+                    $normalizedModified = filemtime($normalized);
+                    if ($originalModified > $normalizedModified) {
+                        $needsNormalization = true;
+                    }
+                }
+
+                // Normalize only when necessary
+                if ($needsNormalization) {
+                    normalizeStudentPhoto($originalPhoto, $normalized);
+                }
+
+                // Use cached normalized image
+                if (file_exists($normalized)) {
+                    $pdf->Image($normalized, 2, 18, 22, 27);
+                }
             }
         }
+
     } catch (Exception $e) {
-        $dmo->log("Could not find passport photo for Adm. No: $admNo");
+        $dmo->log("Could not process passport photo for Adm. No: $admNo");
     }
 
     /* ---------- STUDENT DETAILS ---------- */
