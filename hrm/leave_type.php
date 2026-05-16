@@ -68,8 +68,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblleavetype" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap" style="width: 100%;">
+                    <div class="card-box table-responsive">  
+                        <table id="tblleavetype" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>

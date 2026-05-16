@@ -2,17 +2,21 @@
 require "server.php";
 
 try {
-    if($dmo->getSchools()['status']){
-        $response = $dmo->getSchools(); $school_count = 0; $user_count = 0;
-        foreach ($response['data'] as $row) {
+    $schools = $dmo->getSchools();
+    if($schools['status']){
+        $school_count = 0; $user_count = 0;
+        foreach ($schools['data'] as $row) {
             $school_code = $row['school_code'];
             $school_name = $row['school_name'];
             $school_mail = $row['mail'];
             $school_contact = $row['contact'];
             $school_logo = $row['logo'];
             
-            $result = $dmo->getUsers(["school_code"=>$school_code, "username"=>$school_code]);
-            if($result['status']){
+            $result = $dmo->getUsers([
+                "school_code"=>["operator"=>"=", "value"=>$school_code],
+                "username"=>["operator"=>"=", "value"=>$school_code]
+            ]);
+            if(sizeof($result['data']) > 0){
                 $user_count++;
             } else {
                 try{

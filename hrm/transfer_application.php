@@ -126,8 +126,8 @@
                                                         </thead>
                                                         <tbody id="tbl<?= $value; ?>s">
                                                         <?php
-                                                        if($dmo->getStaffTransferRequests(["str.approval_status"=>$value])['status']){
-                                                        $response = $dmo->getStaffTransferRequests(["str.approval_status"=>$value]); $count=1;
+                                                        if($dmo->getStaffTransferRequests(["str.approval_status"=>$value, "transfer_to"=>$user['school_code']])['status']){
+                                                        $response = $dmo->getStaffTransferRequests(["str.approval_status"=>$value, "transfer_to"=>$user['school_code']]); $count=1;
                                                         foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                                             <tr>
                                                                 <td><?= $count ?></td>

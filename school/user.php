@@ -26,8 +26,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                    <table id="tblcoa" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                    <table id="tblcoa" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                         <thead>
                             <tr style="height: 40px;">
                                 <th>#</th>
@@ -45,8 +45,13 @@
                         </thead>
                         <tbody id="tblcoa">
                         <?php
-                        if($dmo->getUserList(["school_code"=>$user['school_code']])['status']){
-                        $response = $dmo->getUserList(["school_code"=>$user['school_code']]); $count=1;
+                        $response = $dmo->getUserList([
+                            "school_code"=>['operator' => '=', 'value' => $user['school_code']],
+                            "u.userid"=>['operator' => '!=', 'value' => $user['userid']],
+                            "u.role"=>['operator' => '!=', 'value' => 'sa']
+                        ]);
+                        $count=1;
+                        if($response['status']){
                         foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                             <tr>
                                 <td><?= $count ?></td>

@@ -43,11 +43,11 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                 Contact Info
                                             </a>
                                         </li>
-                                        <!-- <li class="nav-item">
+                                        <li class="nav-item">
                                             <a href="#companybankinfo" data-toggle="tab" aria-expanded="false" class="nav-link">
                                                 Bank Account Details
                                             </a>
-                                        </li> -->
+                                        </li>
                                         <li class="nav-item">
                                             <a href="#companysocialinfo" data-toggle="tab" aria-expanded="false" class="nav-link">
                                                 Social Info
@@ -61,18 +61,184 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                 <input type="hidden" name="school" class="form-control " id="school" value="<?= $user['school_code'] ?>" readonly>
                                                 <h5 class="mb-4 text-uppercase bg-light p-2"><i class="mdi mdi-account-circle mr-1"></i> Company Info</h5>
                                                 <div class="row">
-                                                    <div class="col-md-12">
+                                                    <div class="col-md-3 col-sm-3">
                                                         <div class="form-group">
                                                             <label for="school_name">School Name</label>
                                                             <input type="text" name="school_name"  class="form-control" id="school_name" placeholder="<?= $schInfo['school_name']?? "";?>">
                                                         </div>
                                                     </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="county">County</label>
+                                                            <select name="county"  class="form-control select2" id="county" onchange='loadSelect("sub_counties", "fetch.php", "sub_county", this)'>
+                                                                <option value="">--select--</option>
+                                                                <?php
+                                                                $response = $dmo->getCounties();
+                                                                if($response['status']){
+                                                                foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']);
+                                                                    echo "<option value=".$row['code'].">".$row['description']."</option>";
+                                                                } }?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="sub_county">Sub-County</label>
+                                                            <select name="sub_county" class="form-control select2" id="sub_county" onchange='loadSelect("wards", "fetch.php", "ward", this)'>
+                                                                <option value="">--select--</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="ward">Ward:</label>
+                                                            <select name="ward" class="form-control select2" id="ward">
+                                                                <option value="">--select--</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="row">
-                                                    <div class="col-md-12">
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="kra_pin">KRA Pin</label>
+                                                            <input type="text" name="kra_pin"  class="form-control" id="kra_pin" placeholder="<?= $schInfo['kra_pin']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="reg_no">Reg. Number</label>
+                                                            <input type="text" name="reg_no"  class="form-control" id="reg_no" placeholder="<?= $schInfo['reg_no']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for=" emis_code">EMIS Code</label>
+                                                            <input type="text" name="emis_code"  class="form-control" id="emis_code" placeholder="<?= $schInfo['emis_code']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="knec_centre_no">Centre No</label>
+                                                            <input type="text" name="knec_centre_no"  class="form-control" id="knec_centre_no" placeholder="<?= $schInfo['knec_centre_no']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="curriculum">Curriculum</label>
+                                                            <select name="curriculum" class="form-control select2" id="curriculum">
+                                                                <option value="">--select--</option>
+                                                                <?php $result = $dmo->getEnumValues("school", "curriculum");
+                                                                if($result['status']){
+                                                                    foreach ($result['data'] as $value) {
+                                                                        echo "<option value=\"$value\">$value</option>";
+                                                                    }
+                                                                } ?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="level">Level</label>
+                                                            <select name="level" class="form-control select2" id="level">
+                                                                <option value="">--select--</option>
+                                                                <?php $result = $dmo->getEnumValues("school", "level");
+                                                                if($result['status']){
+                                                                    foreach ($result['data'] as $value) {
+                                                                        echo "<option value=\"$value\">$value</option>";
+                                                                    }
+                                                                } ?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="gender">Admission Gender</label>
+                                                            <select name="gender" class="form-control select2" id="gender">
+                                                                <option value="">--select--</option>
+                                                                <?php $result = $dmo->getEnumValues("school", "gender");
+                                                                if($result['status']){
+                                                                    foreach ($result['data'] as $value) {
+                                                                        echo "<option value=\"$value\">$value</option>";
+                                                                    }
+                                                                } ?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="boarding_status">Boarding Status</label>
+                                                            <select name="boarding_status" class="form-control select2" id="boarding_status">
+                                                                <option value="">--select--</option>
+                                                                <?php $result = $dmo->getEnumValues("school", "boarding_status");
+                                                                if($result['status']){
+                                                                    foreach ($result['data'] as $value) {
+                                                                        echo "<option value=\"$value\">$value</option>";
+                                                                    }
+                                                                } ?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="type">School Type</label>
+                                                            <select name="type" class="form-control select2" id="type">
+                                                                <option value="">--select--</option>
+                                                                <?php $result = $dmo->getEnumValues("school", "type");
+                                                                if($result['status']){
+                                                                    foreach ($result['data'] as $value) {
+                                                                        echo "<option value=\"$value\">$value</option>";
+                                                                    }
+                                                                } ?>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
                                                         <div class="form-group">
                                                             <label for="address">Full Address</label>
                                                             <input type="text" name="address"  class="form-control" id="address" placeholder="<?= $schInfo['address']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="longitude">Longitude</label>
+                                                            <input type="number" name="longitude"  class="form-control" id="longitude" placeholder="<?= $schInfo['longitude']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="latitude">Latitude</label>
+                                                            <input type="number" name="latitude"  class="form-control" id="latitude" placeholder="<?= $schInfo['latitude']?? "";?>">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="motto">Motto</label>
+                                                            <textarea type="text" name="motto"  class="form-control" id="motto" placeholder="<?= $schInfo['motto']?? "";?>"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="mission">Mission</label>
+                                                            <textarea type="text" name="mission"  class="form-control" id="mission" placeholder="<?= $schInfo['mission']?? "";?>"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="vision">Vision</label>
+                                                            <textarea type="text" name="vision"  class="form-control" id="vision" placeholder="<?= $schInfo['vision']?? "";?>"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 col-sm-3">
+                                                        <div class="form-group">
+                                                            <label for="core_values">Core Values</label>
+                                                            <textarea type="text" name="core_values"  class="form-control" id="core_values" placeholder="<?= $schInfo['core_values']?? "";?>"></textarea>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -112,7 +278,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                 </div>
                                             </form>
                                         </div>
-                                        <!-- <div class="tab-pane" id="companybankinfo">
+                                        <div class="tab-pane" id="companybankinfo">
                                             <form id="frmCompanyContactInfo" autocomplete="off" method="post" enctype="multipart/form-data">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">
                                                 <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building mr-1"></i> Bank Details</h5>
@@ -148,7 +314,7 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                     <button type="submit" name="update_bacc_info" class="btn btn-success waves-effect waves-light mt-2"><i class="mdi mdi-content-save"></i> Save</button>
                                                 </div>
                                             </form>
-                                        </div> -->
+                                        </div>
                                         <div class="tab-pane" id="companysocialinfo">
                                             <form id="frmCompanySocialInfo" autocomplete="off" method="post" enctype="multipart/form-data">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($dmo->generateCsrfToken()); ?>">

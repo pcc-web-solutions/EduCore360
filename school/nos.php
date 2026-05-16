@@ -81,12 +81,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblnos" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblnos" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>
-                                    <th>School</th>
                                     <th>Code</th>
                                     <th>Series</th>
                                     <th>Description</th>
@@ -99,20 +98,20 @@
                             </thead>
                             <tbody id="tblnoss">
                             <?php
-                            if($dmo->getNoSeries(["school_code"=>$dmo->safeData($user['school_code'])])['status']){
-                            $response = $dmo->getNoSeries(["school_code"=>$dmo->safeData($user['school_code'])]); $count=1;
+                            $response = $dmo->getNoSeries(['AND' => ['school_code' => ['operator' => '=', 'value' => $user['school_code']]]]); $count=1;
+                            if($response['status']){
+                            
                             foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                 <tr>
                                     <td><?= $count ?></td>
-                                    <td contentEditable=false onblur="edit('no_series','school','<?= $id ?>',this)"><?= $dmo->safeData($row['school_code']." - ".$row['school_name']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','ns_code','<?= $id ?>',this)"><?= $dmo->safeData($row['ns_code']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','ns_name','<?= $id ?>',this)"><?= $dmo->safeData($row['ns_name']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','description','<?= $id ?>',this)"><?= $dmo->safeData($row['description']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','startno','<?= $id ?>',this)"><?= $dmo->safeData($row['startno']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','endno','<?= $id ?>',this)"><?= $dmo->safeData($row['endno']) ?></td>
                                     <td contentEditable=true onblur="edit('no_series','lastused','<?= $id ?>',this)"><?= $dmo->safeData($row['lastused']) ?></td>
-                                    <td contentEditable=true onblur="edit('no_series','canskip','<?= $id ?>',this)"><?= $dmo->safeData($row['canskip']) ?></td>
-                                    <td contentEditable=true onblur="edit('no_series','category','<?= $id ?>',this)"><?= $dmo->safeData($row['category']) ?></td>
+                                    <td contentEditable=false onblur="edit('no_series','canskip','<?= $id ?>',this)"><?= $dmo->safeData($row['canskip']) ?></td>
+                                    <td contentEditable=false onblur="edit('no_series','category','<?= $id ?>',this)"><?= $dmo->safeData($row['category']) ?></td>
                                 </tr>
                             <?php $count++; } }?>
                             </tbody>

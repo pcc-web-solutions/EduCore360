@@ -5,6 +5,86 @@ require_once "server.php";
 if($_SERVER['REQUEST_METHOD'] == "POST"){
     $request_name = $dmo->decryptData($_REQUEST['request']);
     switch($request_name){
+        case "counties":
+            try{
+                $conditions = ["c.region"=>$dmo->decryptData($_REQUEST['key'])];
+                if($dmo->getCounties($conditions)['status']){
+                    $result = $dmo->getCounties($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = ["value"=>$row['code'], "text"=>$row['description']];
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+        case "sub_counties":
+            try{
+                $conditions = ["sc.county"=>$dmo->decryptData($_REQUEST['key'])];
+                if($dmo->getSubCounties($conditions)['status']){
+                    $result = $dmo->getSubCounties($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = ["value"=>$row['code'], "text"=>$row['description']];
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+        case "wards":
+            try{
+                $conditions = ["w.sub_county"=>$dmo->decryptData($_REQUEST['key'])];
+                if($dmo->getScWards($conditions)['status']){
+                    $result = $dmo->getScWards($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = ["value"=>$row['code'], "text"=>$row['description']];
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+        case "staffs":
+            try{
+                $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['key'])];
+                if($dmo->getStaffs($conditions)['status']){
+                    $result = $dmo->getStaffs($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = ["value"=>$row['staff_code'], "text"=>$row['first_name']." ".$row['last_name']];
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
+        case "staffs":
+            try{
+                $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['key'])];
+                if($dmo->getStaffs($conditions)['status']){
+                    $result = $dmo->getStaffs($conditions); $data = [];
+                    foreach ($result['data'] as $row) { 
+                        $data[] = ["value"=>$row['staff_code'], "text"=>$row['first_name']." ".$row['last_name']];
+                    }
+                    echo json_encode(["status"=>true, "data"=>$data]);
+                } else {
+                    echo json_encode(["status"=>false, "message"=>"No $request_name found"]);
+                }
+            } catch (Exception $e) {
+                echo json_encode(["status"=>false, "message"=>$e->getMessage()]);
+            }
+            break;
         case "staffs":
             try{
                 $conditions = ["school_code"=>$dmo->decryptData($_REQUEST['key'])];

@@ -80,8 +80,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblstream" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblstream" class="table-bordered table-head-fixed table-striped text-nowrap" style="width: 100%">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>

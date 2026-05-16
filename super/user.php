@@ -45,8 +45,10 @@
                         </thead>
                         <tbody id="tblcoa">
                         <?php
-                        if($dmo->getUserList()['status']){
-                        $response = $dmo->getUserList(); $count=1;
+                        $response = $dmo->getUserList([
+                            "u.id"=>['operator' => '!=', 'value' => $user['id']]
+                        ]); $count=1;
+                        if($response['status']){
                         foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                             <tr>
                                 <td><?= $count ?></td>

@@ -89,7 +89,7 @@
                                                 <div class="col-md-6">
                                                     <div class="form-group">
                                                         <label for="profile">Profile Picture</label>
-                                                        <input type="file" accept="image/jpeg" name="profile" class="form-control" id="profile">
+                                                        <input type="file" accept="image/*" name="profile" class="form-control" id="profile">
                                                     </div>
                                                 </div>
                                             </div> 

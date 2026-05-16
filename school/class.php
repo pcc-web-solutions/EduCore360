@@ -70,8 +70,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblclass" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblclass" class="table-bordered table-head-fixed table-striped text-nowrap"  style="width: 100%">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>
@@ -83,8 +83,8 @@
                             </thead>
                             <tbody id="tblclasses">
                             <?php
-                            if($dmo->getClasses(["school_code"=>$dmo->safeData($user['school_code'])])['status']){
-                            $response = $dmo->getClasses(["school_code"=>$dmo->safeData($user['school_code'])]); $count=1;
+                            $response = $dmo->getClasses(['AND'=>["school_code"=>$dmo->safeData($user['school_code'])]]); $count=1;
+                            if($response['status']){
                             foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                 <tr>
                                     <td><?= $count ?></td>
@@ -115,6 +115,26 @@ $(function(){
 
 $(document).ready(function(){
     let total_selected = 0;
+
+    function updateSelectedCount(){
+        total_selected = $(".select_class:checked").length;
+
+        if(total_selected === $(".select_class").length){
+            $(".select_all").prop("checked", true);
+        } else {
+            $(".select_all").prop("checked", false);
+        }
+    }
+
+    $(".select_all").on("click", function(){
+        $(".select_class").prop("checked", $(this).is(":checked"));
+        updateSelectedCount();
+    });
+
+    $(".select_class").on("click", function(){
+        updateSelectedCount();
+    });
+
 	$("button[name='btnNewClass']").on("click", function(e){
         e.preventDefault();
         if(total_selected < 1){
@@ -144,25 +164,6 @@ $(document).ready(function(){
             });
         }
 	})
-
-    function updateSelectedCount(){
-        total_selected = $(".select_class:checked").length;
-
-        if(total_selected === $(".select_class").length){
-            $(".select_all").prop("checked", true);
-        } else {
-            $(".select_all").prop("checked", false);
-        }
-    }
-
-    $(".select_all").on("click", function(){
-        $(".select_class").prop("checked", $(this).is(":checked"));
-        updateSelectedCount();
-    });
-
-    $(".select_class").on("click", function(){
-        updateSelectedCount();
-    });
 
 })
 </script>

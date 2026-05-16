@@ -107,8 +107,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box w-100">  
-                        <table id="tbljobtitle" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap w-100">
+                    <div class="card-box table-responsive">  
+                        <table id="tbljobtitle" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>

@@ -45,7 +45,7 @@
                                 ?>
                                 <div class="form-group mb-3">
                                     <label for="username">Username</label>
-                                    <input class="form-control" name="username" type="text" id="username" required="" placeholder="Enter your username">
+                                    <input class="form-control" name="username" type="text" id="username" required="" placeholder="Username | School Code | ID Number | Adm. Number">
                                 </div>
                                 <div class="form-group mb-3">
                                     <label for="password">Password</label>
@@ -53,8 +53,8 @@
                                 </div>
 
                                 <div class="form-group mb-0 text-center">
-                                    <button class="btn btn-success btn-flat float-left" name="btnSignin" type="submit" onclick="userSignin()">Sign In </button>
-                                    <a href="<?= "request.php?tkn=".$dmo->storeRoute("website/index.php");?>" class="btn btn-secondary btn-flat float-right"><b>Back Home</b></a>
+                                    <button class="btn btn-success btn-flat float-left" name="btnSignin" type="submit" onclick="userSignin()"><i class="fas fa-sign-in-alt"></i> Sign In </button>
+                                    <a href="<?= "request.php?tkn=".$dmo->storeRoute("website/index.php");?>" class="btn btn-secondary btn-flat float-right"><i class="fas fa-home"></i> Back Home</a>
                                 </div>
                             </form>
                         </div>

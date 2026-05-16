@@ -106,12 +106,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblstudent" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblstudent" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>
-                                    <th>School</th>
+                                    <th>Photo</th>
                                     <th>Adm No</th>
                                     <th>First Name</th>
                                     <th>SurName</th>
@@ -132,14 +132,23 @@
                             foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                 <tr>
                                     <td><?= $count ?></td>
-                                    <td contentEditable=false onblur='edit("student","school",<?= $id ?>,this)'><?= $dmo->safeData($row['school']) ?></td>
+                                    <td>
+                                        <img src="<?= $dmo->safeData($row['profile_picture']) ?>" 
+                                            class="student-photo" 
+                                            data-id="<?= $id ?>" 
+                                            style="width:40px;height:40px;border-radius:10%;cursor:pointer;">
+                                        
+                                        <input type="file" 
+                                            class="upload_photo d-none" 
+                                            data-id="<?= $id ?>">
+                                    </td>
                                     <td contentEditable=true onblur='edit("student","adm_no",<?= $id ?>,this)'><?= $dmo->safeData($row['adm_no']) ?></td>
                                     <td contentEditable=true onblur='edit("student","first_name",<?= $id ?>,this)'><?= $dmo->safeData($row['first_name']) ?></td>
                                     <td contentEditable=true onblur='edit("student","surname",<?= $id ?>,this)'><?= $dmo->safeData($row['surname']) ?></td>
                                     <td contentEditable=true onblur='edit("student","last_name",<?= $id ?>,this)'><?= $dmo->safeData($row['last_name']) ?></td>
                                     <td contentEditable=false onblur='edit("student","gender",<?= $id ?>,this)'><?= $dmo->safeData($row['gender']) ?></td>
-                                    <td contentEditable=true onblur='edit("student","dob",<?= $id ?>,this)'><?= $dmo->safeData($row['dob']) ?></td>
-                                    <td contentEditable=true onblur='edit("student","doa",<?= $id ?>,this)'><?= $dmo->safeData($row['doa']) ?></td>
+                                    <td contentEditable=false onblur='edit("student","dob",<?= $id ?>,this)'><?= date('M. Y', strtotime($dmo->safeData($row['dob']))) ?></td>
+                                    <td contentEditable=false onblur='edit("student","doa",<?= $id ?>,this)'><?= date('M. Y', strtotime($dmo->safeData($row['doa']))) ?></td>
                                     <td contentEditable=false onblur='edit("student","class",<?= $id ?>,this)'><?= $dmo->safeData($row['class']) ?></td>
                                     <td contentEditable=false onblur='edit("student","stream",<?= $id ?>,this)'><?= $dmo->safeData($row['stream']) ?></td>
                                     <td contentEditable=false onblur='edit("student","term",<?= $id ?>,this)'><?= $dmo->safeData($row['term']) ?></td>

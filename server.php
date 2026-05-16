@@ -544,16 +544,24 @@ class DBController extends DataHandler {
 
     private function connect(){
         try {
-            $this->pdo = new PDO(
-                "".config('DB_CONNECTION','mysql').":host=".config('DB_HOST','localhost').":".config('DB_PORT',3306).";dbname=".config('DB_DATABASE').";",
-                config('DB_USERNAME', 'root'),
-                config('DB_PASSWORD',''),
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false
-                ]
-        );
+            if (!config('DB_HOST') || !config('DB_DATABASE') || !config('DB_USERNAME') || !config('DB_PASSWORD')) {
+                $this->log('Database environment variables not set');
+                http_response_code(500);
+                throw new Exception('Service unavailable.');
+            }
+
+            // DSN for MySQL with charset and timeout settings
+            $dsn = sprintf(
+                '%s:host=%s;port=%d;dbname=%s;charset=utf8mb4;connect_timeout=5', config('DB_CONNECTION','mysql'), config('DB_HOST','localhost'), config('DB_PORT',3306), config('DB_DATABASE','educore360')
+            );
+
+            $options = [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ];
+
+            $this->pdo = new PDO($dsn, config('DB_USERNAME', 'root'), config('DB_PASSWORD',''), $options);
         } catch (PDOException $e) {
             $this->log($e->getMessage());
             throw new Exception("Database connection failed");
@@ -667,6 +675,208 @@ class DBController extends DataHandler {
         $data['browser']    = $this->getBrowser();
         return $data;
     }
+    private function buildConditions(array $conditions): array {
+        $clauses = [];
+        $params = [];
+
+        foreach ($conditions as $key => $value) {
+            $keyUpper = strtoupper($key);
+
+            if ($keyUpper === 'AND' || $keyUpper === 'OR') {
+                $subClauses = [];
+                $subParams = [];
+                foreach ($value as $k => $v) {
+                    if (is_array($v) && !isset($v['value'])) {
+                        $nested = $this->buildConditions([$k => $v]);
+                        $subClauses[] = '(' . $nested['clause'] . ')';
+                        $subParams = array_merge($subParams, $nested['params']);
+                    } else {
+                        [$c, $p] = $this->parseSingleCondition($k, $v);
+                        $subClauses[] = $c;
+                        $subParams = array_merge($subParams, $p);
+                    }
+                }
+                $clauses[] = '(' . implode(" $keyUpper ", $subClauses) . ')';
+                $params = array_merge($params, $subParams);
+            } else {
+                [$c, $p] = $this->parseSingleCondition($key, $value);
+                $clauses[] = $c;
+                $params = array_merge($params, $p);
+            }
+        }
+
+        return ['clause' => implode(' AND ', $clauses), 'params' => $params];
+    }
+    private function parseSingleCondition(string $column, mixed $value): array {
+        $params = [];
+        $clause = '';
+
+        if (is_array($value) && isset($value['operator'], $value['value'])) {
+            $op = strtoupper($value['operator']);
+            $val = $value['value'];
+
+            if (in_array($op, ['IN', 'NOT IN']) && is_array($val)) {
+                $placeholders = implode(',', array_fill(0, count($val), '?'));
+                $clause = "$column $op ($placeholders)";
+                $params = $val;
+            } elseif ($op === 'BETWEEN' && is_array($val) && count($val) === 2) {
+                $clause = "$column BETWEEN ? AND ?";
+                $params = $val;
+            } elseif ($op === 'IS NULL' || $op === 'IS NOT NULL') {
+                $clause = "$column $op";
+            } else {
+                $clause = "$column $op ?";
+                $params[] = $val;
+            }
+        } else {
+            $clause = "$column = ?";
+            $params[] = $value;
+        }
+
+        return [$clause, $params];
+    }
+
+    /* ===== GENERIC SELECT ===== */
+    public function select(array $options): array {
+        $columns = $options['columns'] ?? '*';
+        $table   = $options['table'] ?? '';
+        $joins   = $options['joins'] ?? [];
+        $where   = $options['where'] ?? [];
+        $having  = $options['having'] ?? [];
+        $groupBy = $options['group'] ?? '';
+        $order   = $options['order'] ?? '';
+        $limit   = $options['limit'] ?? null;
+        $offset  = $options['offset'] ?? 0;
+
+        $sql = "SELECT $columns FROM $table ";
+        if (!empty($joins)) {
+            $sql .= implode(' ', $joins) . ' ';
+        }
+
+        $params = [];
+        if (!empty($where)) {
+            $whereBuild = $this->buildConditions($where);
+            $sql .= ' WHERE ' . $whereBuild['clause'];
+            $params = array_merge($params, $whereBuild['params']);
+        }
+
+        if (!empty($groupBy)) {
+            $sql .= " GROUP BY $groupBy";
+        }
+
+        if (!empty($having)) {
+            $havingBuild = $this->buildConditions($having);
+            $sql .= ' HAVING ' . $havingBuild['clause'];
+            $params = array_merge($params, $havingBuild['params']);
+        }
+
+        if (!empty($order)) {
+            $sql .= " ORDER BY $order";
+        }
+
+        if ($limit !== null) {
+            $sql .= " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
+        }
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $operation = strtoupper(strtok(trim($sql), " "));
+            if (in_array($operation, $this->loggableOps)) {
+                $this->log("[$operation] SQL: " . $sql . " | Params: " . json_encode($params));
+            }
+            return ['status' => true, 'data' => $stmt->fetchAll()];
+        } catch (PDOException $e) {
+            $this->log("[SELECT ERROR] " . $e->getMessage() . " | SQL: " . $sql);
+            return ['status' => false, 'message' => 'Query failed'];
+        }
+    }
+
+    /* ===== GENERIC INSERT ===== */
+    public function executeInsert(string $table, array $data): array {
+        $columns = array_keys($data);
+        $placeholders = array_fill(0, count($columns), '?');
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s)',
+            $table,
+            implode(', ', $columns),
+            implode(', ', $placeholders)
+        );
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(array_values($data));
+            $this->pdo->commit();
+            $operation = strtoupper(strtok(trim($sql), " "));
+            if (in_array($operation, $this->loggableOps)) {
+                $this->log("[$operation] SQL: " . $sql . " | Params: " . json_encode(array_values($data)));
+            }
+            return ['status' => true, 'lastId' => $this->pdo->lastInsertId()];
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->log("[INSERT ERROR] " . $e->getMessage() . " | SQL: " . $sql);
+            return ['status' => false, 'message' => 'Insert failed'];
+        }
+    }
+
+    /* ===== GENERIC UPDATE ===== */
+    public function executeUpdate(string $table, array $data, array $where): array {
+        $setClauses = [];
+        foreach ($data as $col => $val) {
+            $setClauses[] = "$col = ?";
+        }
+
+        $sql = "UPDATE $table SET " . implode(', ', $setClauses);
+        $params = array_values($data);
+
+        if (!empty($where)) {
+            $whereBuild = $this->buildConditions($where);
+            $sql .= ' WHERE ' . $whereBuild['clause'];
+            $params = array_merge($params, $whereBuild['params']);
+        }
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $this->pdo->commit();
+            $operation = strtoupper(strtok(trim($sql), " "));
+            if (in_array($operation, $this->loggableOps)) {
+                $this->log("[$operation] SQL: " . $sql . " | Params: " . json_encode($params));
+            }
+            return ['status' => true, 'rowsAffected' => $stmt->rowCount()];
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->log("[UPDATE ERROR] " . $e->getMessage() . " | SQL: " . $sql);
+            return ['status' => false, 'message' => 'Update failed'];
+        }
+    }
+
+    /* ===== GENERIC DELETE ===== */
+    public function executeDelete(string $table, array $where): array {
+        if (empty($where)) {
+            return ['status' => false, 'message' => 'Delete conditions required!'];
+        }
+
+        $whereBuild = $this->buildConditions($where);
+        $sql = "DELETE FROM $table WHERE " . $whereBuild['clause'];
+        $params = $whereBuild['params'];
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $this->pdo->commit();
+            $operation = strtoupper(strtok(trim($sql), " "));
+            if (in_array($operation, $this->loggableOps)) {
+                $this->log("[$operation] SQL: " . $sql . " | Params: " . json_encode($params));
+            }
+            return ['status' => true, 'rowsAffected' => $stmt->rowCount()];
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            $this->log("[DELETE ERROR] " . $e->getMessage() . " | SQL: " . $sql);
+            return ['status' => false, 'message' => 'Delete failed'];
+        }
+    }
+
     public function buildWhereClauses($conditions): string{
         $whereClauses = [];
         foreach($conditions AS $column => $value){
@@ -712,64 +922,6 @@ class DBController extends DataHandler {
         } catch (PDOException $e) {
             $this->log("Query Error: " . $e->getMessage() . " | SQL: " . $query);
             throw new Exception("Row Count Failed.");
-        }
-	}
-	public function executeInsert($query, $params): int|string {
-        $this->pdo->beginTransaction();
-        try {
-            $stmt = $this->pdo->prepare(query: $query);
-            $stmt->execute(params: $params);
-            $lastInsertId = $this->pdo->lastInsertId();
-            $this->pdo->commit();
-            
-            $operation = strtoupper(strtok(trim($query), " "));
-            if (in_array($operation, $this->loggableOps)) {
-                $this->log("[$operation] SQL: " . $query . " | Params: " . json_encode($params));
-            }
-
-            return $lastInsertId;
-        } catch (PDOException $e) {
-            $this->pdo->rollBack();
-            $this->log("Query Error: " . $e->getMessage() . " | SQL: " . $query);
-            throw new Exception("Unable to insert record.");
-        }	
-	}
-	public function executeUpdate($query, $params): bool{
-        $this->pdo->beginTransaction();
-		try {
-            $stmt = $this->pdo->prepare(query: $query);
-            $stmt->execute(params: $params);
-            $this->pdo->commit();
-            
-            $operation = strtoupper(strtok(trim($query), " "));
-            if (in_array($operation, $this->loggableOps)) {
-                $this->log("[$operation] SQL: " . $query . " | Params: " . json_encode($params));
-            }
-            
-			return $stmt->rowCount();
-        } catch (PDOException $e) {
-            $this->pdo->rollBack();
-            $this->log("Query Error: " . $e->getMessage() . " | SQL: " . $query);
-            throw new Exception("Updation Failed.");
-        }
-	}
-	public function executeDelete($query, $params): bool{
-        $this->pdo->beginTransaction();
-        try {
-            $stmt = $this->pdo->prepare(query: $query);
-            $stmt->execute(params: $params);
-            $this->pdo->commit();
-            
-            $operation = strtoupper(strtok(trim($query), " "));
-            if (in_array($operation, $this->loggableOps)) {
-                $this->log("[$operation] SQL: " . $query . " | Params: " . json_encode($params));
-            }
-            
-            return $stmt->rowCount();
-        } catch (PDOException $e) {
-            $this->pdo->rollBack();
-            $this->log("Delete Error: " . $e->getMessage() . " | SQL: " . $query);
-            throw new Exception("Deletion Failed.");
         }
 	}
     private function safeQuote($value) {
@@ -1083,13 +1235,10 @@ class User extends DBController {
 
     public function verifyPassword($userid, $password, $attempts): bool|string {
         if (password_verify($this->password, $password) === TRUE) {
-            $sql = "UPDATE user SET attempts = ? WHERE userid = ? ";
-            $this->executeUpdate(query: $sql, params: [4, $userid]);
-            return TRUE;
+            return $this->executeUpdate('user', ['attempts'=>4], ['userid'=>$userid])['status'];
         } else {
             $attempts--;
-            $sql = "UPDATE user SET attempts = ? WHERE userid = ?";
-            $this->executeUpdate(query: $sql, params: [$attempts, $userid]);
+            $this->executeUpdate('user', ['attempts'=>$attempts], ['userid'=>$userid]);
             if ($attempts > 0) {
                 return "Incorrect password: $attempts attempts remaining";
             } else {
@@ -1161,13 +1310,10 @@ class User extends DBController {
     }
 
     public function resetPassword($new_password, $address): bool {
-        $stmt = "UPDATE user SET password = ?, attempts = ? WHERE email = ?";
-        $result = $this->executeUpdate(query: $stmt, params: [$new_password, 4, $address]);
-        return (bool)$result;
+        return $this->executeUpdate('user', ['password'=>$new_password, 'attempts'=>4], ['email'=>$address])['status'];
     }
     public function reportLogin($userid): void {
-        $stmt = "UPDATE user SET session_id = ?, lastlogindate = ?, lastlogintime = ? WHERE userid = ? ";
-        $this->executeUpdate(query: $stmt, params: [session_id(), $this->todaysDate(), $this->currentTime(), $userid]);
+        $this->executeUpdate('user', ['session_id'=>session_id(), 'lastlogindate'=>$this->todaysDate(), 'lastlogintime'=>$this->currentTime()], ['userid'=>$userid]);
     }
     public function check_login() {
         if (!isset($_SESSION['user'])) {
@@ -1264,8 +1410,7 @@ class User extends DBController {
         }
     }
     public function reportLogout($userid): void {
-        $stmt = "UPDATE user SET session_id = ?, lastlogoutdate = ?, lastlogouttime = ? WHERE userid = ? ";
-        $this->executeUpdate(query: $stmt, params: [NULL, $this->todaysDate(), $this->currentTime(), $userid]);
+        $this->executeUpdate('user', ['session_id'=>session_id(), 'lastlogoutdate'=>$this->todaysDate(), 'lastlogouttime'=>$this->currentTime()], ['userid'=>$userid]);
     }
 }
 
@@ -1305,8 +1450,7 @@ class DataManipulation extends User{
         $stmt = "SELECT `school_code` FROM school WHERE school_code = ? OR school_code = ? ";
         $num_rows = $this->numRows(query: $stmt, params: [$code, $name]);
         if($num_rows<1){
-            $stmt = "INSERT INTO school (school_code, school_name, category, mail, contact, logo) VALUES (?, ?, ?, ?, ?, ?) ";
-            if($this->executeInsert(query: $stmt, params: [$code,$name,$category,$mail,$contact,$logo])){
+            if($this->executeInsert('school',['school_code'=>$code,'school_name'=>$name,'category'=>$category,'mail'=>$mail,'contact'=>$contact,'logo'=>$logo])['status']){
                 $this->response = ["status"=>true,"message"=> "$name created successfully"];
             }else{$this->response = ["status"=>false, "message"=>"Unable to add $name"];}
         }else{$this->response = ["status"=>false, "message"=>"$name already exists"];}
@@ -1316,44 +1460,55 @@ class DataManipulation extends User{
         $password = password_hash($this->cleanData("password"), PASSWORD_DEFAULT);
         $stmt = "SELECT userid FROM user WHERE username = ? ";
         if($this->numRows(query: $stmt, params: [$school_code]) == false){
-            $stmt = "INSERT INTO user (school, userid, username, password, displayname, role, profile, email, contact, photo, regdate, attempts, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $last_insert_id = $this->executeInsert(query: $stmt, params: [$school_code, $this->generateUid(), $school_code, $password, $school_name, "school", "school", $school_mail, $school_contact, $logo, $this->todaysDate(), 4, 1]);
-            if($last_insert_id){
+            $last_insert_id = $this->executeInsert('user',['school'=>$school_code, 'userid'=>$this->generateUid(), 'username'=>$school_code, 'password'=>$password, 'displayname'=>$school_name, 'role'=>"school", 'profile'=>"school", 'email'=>$school_mail, 'contact'=>$school_contact, 'photo'=>$logo, 'regdate'=>$this->todaysDate(), 'attempts'=>4, 'status'=>1]);
+            if($last_insert_id['status'] == true){
                 $this->response = ["status"=>true, "message"=>"Account created successfully"];
             }else{$this->response = ["status"=>false, "message"=>"Unable to create a default school account"];}
         }else{ $this->response = ["status"=>false, "message"=>"Account already exists"]; }
         return $this->response;
     }
-    public function getNoSeries($conditions=[]){
-        $stmt = "SELECT ns.id, ns.school AS school_code, sch.school_name, ns.ns_code, ns_name, ns.description, ns.startno, ns.endno, ns.lastused, ns.canskip, ns.category FROM no_series ns INNER JOIN school sch ON ns.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code, ns_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+    public function getNoSeries($where=[]){
+        $result = $this->select([
+            'columns' => "ns.id, ns.school AS school_code, sch.school_name, ns.ns_code, ns_name, ns.description, ns.startno, ns.endno, ns.lastused, IF(ns.canskip = 1,'Yes','No') AS canskip, ns.category",
+            'table'   => 'no_series ns',
+            'joins'   => [
+                'INNER JOIN school sch ON ns.school = sch.school_code'
+            ],
+            'where'   => $where,
+            'order'   => 'school_code ASC, ns_name ASC'
+        ]);
+        if($result['status']){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getUsers($conditions=[]){
-        $stmt = "SELECT u.id, u.school AS school_code, sch.school_name, u.userid, u.username, u.password, u.displayname, u.role, u.profile, u.email, u.contact, u.photo, u.regdate, u.lastlogindate, u.lastlogintime, u.lastlogoutdate, u.lastlogouttime, u.attempts, u.status FROM user u LEFT JOIN school sch ON u.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY role ASC, username ASC";
-        $num_rows = $this->numRows($stmt, $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "u.id, u.school AS school_code, sch.school_name, u.userid, u.username, u.password, u.displayname, u.role, u.profile, u.email, u.contact, u.photo, u.regdate, u.lastlogindate, u.lastlogintime, u.lastlogoutdate, u.lastlogouttime, u.attempts, u.status",
+            'table' => 'user u',
+            'joins' => [
+                'LEFT JOIN school sch ON u.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'role ASC, username ASC'
+        ]);
+        if($result['status']){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getUserList($conditions=[]){
-        $stmt = "SELECT u.id, u.school AS school_code, sch.school_name, u.userid, u.username, u.password, u.displayname, u.role, u.profile, u.email, u.contact, u.photo, u.regdate, u.lastlogindate, u.lastlogintime, u.lastlogoutdate, u.lastlogouttime, u.attempts, u.status FROM user u LEFT JOIN school sch ON u.school = sch.school_code";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); $stmt .= " AND role != 'sa' ";}
-        $stmt .= " ORDER BY role ASC, username ASC";
-        $num_rows = $this->numRows($stmt, $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "u.id, u.school AS school_code, sch.school_name, u.userid, u.username, u.password, u.displayname, u.role, u.profile, u.email, u.contact, u.photo, u.regdate, u.lastlogindate, u.lastlogintime, u.lastlogoutdate, u.lastlogouttime, u.attempts, u.status",
+            'table' => 'user u',
+            'joins' => [
+                'LEFT JOIN school sch ON u.school = sch.school_code'
+            ],
+            'where' => $conditions,
+            'order' => 'role ASC, username ASC'
+        ]);
+        if($result['status']){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -1381,7 +1536,7 @@ class DataManipulation extends User{
         else
             return ["status"=>true, "message"=>"School info not initialized"];
     }
-    public function getCountries(){
+    public function getCountries($conditions=[]){
         $stmt = "SELECT * FROM country ORDER BY country_name ASC";
         $num_rows = $this->numRows(query: $stmt, params: []);
         if($num_rows>0){
@@ -1389,46 +1544,59 @@ class DataManipulation extends User{
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
-    public function getRegions(){
-        $stmt = "SELECT region.id, region.region_code, region.region_name, region.country_code, country.country_name FROM region INNER JOIN country ON region.country_code = country.country_code ORDER BY region_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: []);
+    public function getRegions($conditions=[]){
+        $stmt = "SELECT r.* FROM region r";
+        $params = [];
+        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
+        $stmt .= " ORDER BY r.description ASC";
+        $num_rows = $this->numRows(query: $stmt, params: $params);
         if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: [])];
+            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
-    public function getCounties(){
-        $stmt = "SELECT county.id, county.county_code, county.county_name, region.region_code, region.region_name FROM county  INNER JOIN region ON county.region = region.region_code ORDER BY county_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: []);
+    public function getCounties($conditions=[]){
+        $stmt = "SELECT c.* FROM county c INNER JOIN region r ON c.region = r.code";
+        $params = [];
+        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
+        $stmt .= " ORDER BY c.description ASC";
+        $num_rows = $this->numRows(query: $stmt, params: $params);
         if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: [])];
+            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
-    public function getSubCounties(){
-        $stmt = "SELECT `sub-county`.id, `sub-county`.sc_code, `sub-county`.sc_name, county.county_code, county.county_name FROM `sub-county` INNER JOIN county ON `sub-county`.county_code = county.county_code ORDER BY sc_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: []);
+    public function getSubCounties($conditions=[]){
+        $stmt = "SELECT sc.* FROM sub_county sc INNER JOIN county c ON sc.county = c.code";
+        $params = [];
+        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
+        $stmt .= " ORDER BY sc.description ASC";
+        $num_rows = $this->numRows(query: $stmt, params: $params);
         if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: [])];
+            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
-    public function getScWards(){
-        $stmt = "SELECT `sc-ward`.id, `sc-ward`.ward_code, `sc-ward`.ward_name, `sub-county`.sc_code, `sub-county`.sc_name FROM `sc-ward` INNER JOIN `sub-county` ON `sc-ward`.sub_county = `sub-county`.sc_code ORDER BY ward_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: []);
+    public function getScWards($conditions=[]){
+        $stmt = "SELECT w.* FROM ward w INNER JOIN sub_county sc ON w.sub_county = sc.code";
+        $params = [];
+        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
+        $stmt .= " ORDER BY w.description ASC";
+        $num_rows = $this->numRows(query: $stmt, params: $params);
         if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: [])];
+            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
     public function getSchools($conditions=[]){
-        $stmt = "SELECT id, school_code, school_name, category, address, mail, contact, logo, motto, mission, vision, core_values, facebook, twitter, instagram, linkedin, skype, website, established_year,status, created_at, updated_at FROM school ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, school_name ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "id, school_code, school_name, address, logo, motto, mission, vision, core_values established_year,status, created_at, updated_at",
+            'table' => 'school',
+            'where' => $conditions,
+            'order' => 'school_code ASC, school_name ASC'
+        ]);
+        if($result['status']){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -1662,13 +1830,19 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getClasses($conditions=[]){
-        $stmt = "SELECT DISTINCT sc.id, sc.school AS school_code, sch.school_name AS school, sc.class AS class_code, c.class_name, c.abbrev, sc.is_offered, c.class_number, al.level_name, al.stage_order FROM school_class sc INNER JOIN class c ON sc.class = c.class_code INNER JOIN academic_level al ON al.level_name = c.level INNER JOIN school sch ON sc.school = sch.school_code ";
-        $params = [];
-        if(!empty($conditions)){ $stmt .= $this->buildWhereClauses($conditions); $params = $this->buildParams(conditions: $conditions); }
-        $stmt .= " ORDER BY school_code ASC, class_number ASC";
-        $num_rows = $this->numRows(query: $stmt, params: $params);
-        if($num_rows>0){
-            $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
+        $result = $this->select([
+            'columns' => "DISTINCT sc.id, sc.school AS school_code, sch.school_name AS school, sc.class AS class_code, c.class_name, c.abbrev, sc.is_offered, c.class_number, al.level_name, al.stage_order",
+            'table'   => 'school_class sc',
+            'joins'   => [
+                'INNER JOIN class c ON sc.class = c.class_code',
+                'INNER JOIN academic_level al ON al.level_name = c.level',
+                'INNER JOIN school sch ON sc.school = sch.school_code'
+            ],
+            'where'   => $conditions,
+            'order'   => 'school_code ASC, class_number ASC'
+        ]);
+        if($result['status']){
+            $this->response = ["status"=>true, "data"=>$result['data']];
         }else{$this->response = ["status"=>false, "message"=>"No records found"];}
         return $this->response;
     }
@@ -1742,10 +1916,11 @@ class DataManipulation extends User{
         $stmt = "SELECT id FROM class_enrollment WHERE school = ? AND adm_no = ? AND class = ? AND stream = ? AND term = ? AND year = ? ";
         $num_rows = $this->numRows(query: $stmt, params: [$school, $adm_no, $class, $stream, $term, $year]);
         if($num_rows<1){
-            $stmt = "INSERT INTO class_enrollment (school, adm_no, class, stream, term, year) VALUES (?, ?, ?, ?, ?, ?) ";
-            if($this->executeInsert(query: $stmt, params: [$school,$adm_no,$class,$stream,$term,$year])){
+            if($this->executeInsert('class_enrollment', ['school'=>$school, 'adm_no'=>$adm_no, 'class'=>$class, 'stream'=>$stream, 'term'=>$term, 'year'=>$year])['status']){
                 $this->response = ["status"=>true, "message"=>"$adm_no successfully mapped to $class $stream"];
-            }else{ $this->response = ["status"=>false, "message"=>"Unable to map $adm_no to $class $stream"];}
+            } else {
+                $this->response = ["status"=>false, "message"=>"Unable to map $adm_no to $class $stream"];
+            }
         }else{ $this->response = ["status"=>false, "message"=>"$adm_no already exists in $class $stream"];}
         return $this->response;
     }
@@ -1907,9 +2082,7 @@ class DataManipulation extends User{
     }
     public function editValue($table, $column, $id, $value){
         try{
-            $stmt = "UPDATE ".$table." SET ".$column." = ? WHERE id = ?";
-            $result = $this->executeUpdate(query: $stmt, params: [$value, $id]);
-            return $result;
+            return $this->executeUpdate($table, [$column=>$value], ['id'=>$id])['status'];
         } catch (Exception $e){
             throw new Exception("Unable to update $column to $value in $table where id is $id");
         }
@@ -1918,8 +2091,7 @@ class DataManipulation extends User{
         $stmt = "SELECT id FROM job_applicant WHERE applicant_code = ? OR contact_phone = ? OR contact_email = ?";
         $num_rows = $this->numRows(query: $stmt, params: [$applicant_code, $contact_phone, $contact_email]);
         if($num_rows<1){
-            $stmt = "INSERT INTO job_applicant (applicant_code, applicant_name, contact_phone, contact_email) VALUES (?, ?, ?, ?) ";
-            if($this->executeInsert(query: $stmt, params: [$applicant_code, $applicant_name, $contact_phone, $contact_email])){
+            if($this->executeInsert('job_applicant', ["applicant_code"=>$applicant_code, "applicant_name"=>$applicant_name, "contact_phone"=>$contact_phone, "contact_email"=>$contact_email])['status']){
                 return ["status"=>"success","message"=> "Applicant registered successfully"];
             }else{ return ["status"=>"error","message"=> "Unable to register client"];}
         }else{ return ["status"=>"warning","message"=> "Client already exists"];}
@@ -1937,19 +2109,11 @@ class DataManipulation extends User{
                 return ["status"=>"warning","message"=>$clus["message"]];
             }
             $resume_name = $rus["path"]; $cover_letter_name = $clus["path"];
-            $stmt = "INSERT INTO job_application (applicant_code, job_posting_code, resume, cover_letter) VALUES (?, ?, ?, ?) ";
-            if($this->executeInsert(query: $stmt, params: [$applicant_code, $job_posting_code, $resume_name, $cover_letter_name])){
-                return ["status"=>"success","message"=> "Application submitted successfully"];
+
+            if($this->executeInsert('job_application', ["applicant_code"=>$applicant_code, "job_posting_code"=>$job_posting_code, "resume"=>$resume_name, "cover_letter"=>$cover_letter_name])['status']){
+                 return ["status"=>"success","message"=> "Application submitted successfully"];
             }else{ return ["status"=>"error","message"=> "Unable to submit application"];}
         }else{ return ["status"=>"warning","message"=> "You already submitted an application for this post"];}
-    }
-    public function deleteRecord($table, $key, $value): string{
-        $stmt = "DELETE FROM ".$table." WHERE ".$key." = ? ";
-        $affected = $this->executeDelete(query: $stmt, params: [$value]);
-        if($affected == true){
-            $success = "$table deleted successfully";
-        }else{$err = "Unable to delete $table";}
-        return $err;
     }
     public function getAcademicSessions($conditions=[]){
         $stmt = "SELECT acds.id, acds.school AS school_code, sch.school_name AS school_name, acds.session_code, acds.session_name, acds.year, acds.start_date, acds.end_date, acds.term_no, acds.status FROM academic_session acds INNER JOIN school sch ON acds.school = sch.school_code ";

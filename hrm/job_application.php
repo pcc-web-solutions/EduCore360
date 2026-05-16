@@ -103,8 +103,8 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                         if($result['status']){
                                             $cnt = 1;
                                             foreach ($result['data'] as $value) { ?>
-                                                <div class="tab-pane <?= $cnt==1? "show active" : ""; ?>" id="<?= str_replace(" ","_", $value); ?>">
-                                                    <table id="tbl<?= str_replace(" ","_", $value); ?>" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap" style="width: 100%;">
+                                                <div class="tab-pane table-responsive <?= $cnt==1? "show active" : ""; ?>" id="<?= str_replace(" ","_", $value); ?>">
+                                                    <table id="tbl<?= str_replace(" ","_", $value); ?>" class="table-bordered table-head-fixed table-striped text-nowrap" style="width: 100%;">
                                                         <thead>
                                                             <tr style="height: 40px;">
                                                                 <th>#</th>

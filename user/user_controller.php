@@ -58,10 +58,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         case 'Teacher': $role = "teacher"; break;
                         default: $role = "guest";
                     }
-                    $params = [$resultset['school'], $id_no, $alias, $user_password, $resultset['displayname'], $role, $role, $resultset['email'], $resultset['phone'], $resultset['profile_picture'], $dmo->todaysDate(), 4, 1];
-                    $stmt = "INSERT INTO user (school, userid, username, password, displayname, role, profile, email, contact, photo, regdate, attempts, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    $last_insert_id = $dmo->executeInsert(query: $stmt, params: $params);
-                    if($last_insert_id){ header("location: request.php?tkn=".$dmo->storeRoute("user/signin.php")."&info=Account created successfully. Please sign in to proceed");
+
+                    $last_insert_id = $dmo->executeInsert('user', ['school'=>$resultset['school'], 'userid'=>$id_no, 'username'=>$alias, 'password'=>$user_password, 'displayname'=>$resultset['displayname'], 'role'=>$role, 'profile'=>$role, 'email'=>$resultset['email'], 'contact'=>$resultset['phone'], 'photo'=>$resultset['profile_picture'], 'regdate'=>$dmo->todaysDate(), 'attempts'=>4, 'status'=>1]);
+                    
+                    if($last_insert_id['status']){ header("location: request.php?tkn=".$dmo->storeRoute("user/signin.php")."&info=Account created successfully. Please sign in to proceed");
                     }else{$err = "Unable to sign you up";}
                 }
                 

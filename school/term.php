@@ -60,8 +60,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblterm" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblterm" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>#</th>

@@ -21,8 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $password = $_POST['password'] ?? ''; 
         $attempts = $user['attempts'];
         if(password_verify($password, $user['password']) === TRUE) {
-            $sql = "UPDATE user SET attempts = ? WHERE userid = ? ";
-			$dmo->executeUpdate(query: $sql, params: [4, $user['userid']]);
+            $dmo->executeUpdate('user', ['attempts'=>4], ['userid'=>$user['userid']]);
             unset($_SESSION['locked']);
             $_SESSION['last_activity'] = time();
             $loginstatus = $dmo->login(user: $user);
@@ -30,8 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header(header: "location: ".$loginstatus." ");
 		}else{
 			$attempts--;
-            $sql = "UPDATE user SET attempts = ? WHERE userid = ?";
-			$dmo->executeUpdate(query: $sql, params: [$attempts, $user['userid']]);
+            $dmo->executeUpdate('user', ['attempts'=>$attempts], ['userid'=>$user['userid']]);
 			if($attempts > 0){$warning = "Incorrect password: $attempts attempts remaining";}
 			else{$err = "Account blocked";}
 		}
@@ -76,8 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $profile = $response['status']? $response['path'] : $user['photo'];
             }
             try{
-                $stmt = "UPDATE user SET displayname = ?, contact = ?, email = ?, photo = ? WHERE id = ? ";
-                $result = $dmo->executeUpdate(query: $stmt, params: [$displayname, $contact, $email, $profile, $user['id']]);
+                $dmo->executeUpdate('user', ['displayname'=>$displayname, 'contact'=>$contact, 'email'=>$email, 'photo'=>$profile], ['id'=>$user['id']]);
                 $info = "Profile updated successfully";
             } catch (Exception $e){
                 $err = "An error occured: ".$e->getMessage();
@@ -117,10 +114,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT dim_id FROM dimension WHERE dim_id = ? OR dim_name = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$dim_id, $dim_name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO dimension (dim_id, dim_name, dim_description) VALUES (?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$dim_id, $dim_name, $dim_description])){
+                if($dmo->executeInsert('dimension', ['dim_id'=>$dim_id, 'dim_name'=>$dim_name, 'dim_description'=>$dim_description])['status']){
                     $success = "$dim_name created successfully";
-                }else{ throw new Exception("Unable to create $dim_name");}
+                } else { throw new Exception("Unable to create $dim_name"); }
             }else{ throw new Exception("$dim_name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -142,10 +138,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT dv_code FROM dim_value WHERE dv_code = ? OR dv_name = ? AND dim_id = ? AND school = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$dv_id, $dv_name, $dim_id, $school]);
             if($num_rows<1){
-                $stmt = "INSERT INTO dim_value (school, dim_id, dv_code, dv_name, description, inv_nos, rct_nos, incharge, filter_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $dim_id, $dv_id, $dv_name, $description, $inv_nos, $rct_nos, $incharge, $filter_name])){
+                if($dmo->executeInsert('dim_value', ['school'=>$school, 'dim_id'=>$dim_id, 'dv_code'=>$dv_id, 'dv_name'=>$dv_name, 'description'=>$description, 'inv_nos'=>$inv_nos, 'rct_nos'=>$rct_nos, 'incharge'=>$incharge, 'filter_name'=>$filter_name])['status']){
                     $success = "$dv_name created successfully";
-                }else{ throw new Exception("Unable to create $dv_name");}
+                } else {
+                    throw new Exception("Unable to create $dv_name");
+                }
             }else{ throw new Exception("$dv_name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -167,8 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM no_series WHERE ns_code = ? AND category = ? OR ns_name = ? AND school = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$ns_code, $category, $ns_name, $school]);
             if($num_rows<1){
-                $stmt = "INSERT INTO no_series (school, ns_code, ns_name, description, startno, endno, lastused, canskip, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $ns_code, $ns_name, $description, $startno, $endno, $lastused, $canskip, $category])){
+                if($dmo->executeInsert('no_series', ['school'=>$school, 'ns_code'=>$ns_code, 'ns_name'=>$ns_name, 'description'=>$description, 'startno'=>$startno, 'endno'=>$endno, 'lastused'=>$lastused, 'canskip'=>$canskip, 'category'=>$category])){
                     $success = "$ns_name added successfully";
                 }else{ throw new Exception("Unable to add $ns_name");}
             }else{ throw new Exception("$ns_name already exists");}
@@ -191,11 +187,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $stmt = "SELECT userid FROM user WHERE username = ? ";
             if($dmo->numRows(query: $stmt, params: [$username])){
-                $stmt = "INSERT INTO user (userid, username, password, displayname, role, email, contact, photo, regdate, attempts, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                $last_insert_id = $dmo->executeInsert(query: $stmt, params: [$userid, $username, $password, $display_name, $role, $email, $contact, $tmp_profile_image, $dmo->todaysDate(), 4, 1]);
-                if($last_insert_id){
+                if($dmo->executeInsert('user', ['userid'=>$userid, 'username'=>$username, 'password'=>password_hash($password, PASSWORD_DEFAULT), 'displayname'=>$display_name, 'role'=>$role, 'email'=>$email, 'contact'=>$contact, 'photo'=>$tmp_profile_image, 'regdate'=>$dmo->todaysDate(), 'attempts'=>4, 'status'=>1])['status']){
                     $success = "Account created successfully";
-                }else{throw new Exception("Unable to sign you up");}
+                } else { throw new Exception("Unable to sign you up"); }
             }else{
                 throw new Exception("A user with the supplied alias already exists.");
             }
@@ -219,14 +213,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if($num_rows<1){
                 $response = $dmo->upload($logo);
                 if($response['status']){
-                    $stmt = "INSERT INTO school (school_code, school_name, category, mail, contact, logo) VALUES (?, ?, ?, ?, ?, ?) ";
-                    if($dmo->executeInsert(query: $stmt, params: [$school_code,$school_name,$category,$mail,$contact,$response['path']])){
+                    if($dmo->executeInsert('school', ['school_code'=>$school_code, 'school_name'=>$school_name, 'category'=>$category, 'mail'=>$mail, 'contact'=>$contact, 'logo'=>$response['path']])['status']){
                         $success = "$school_name added successfully";
                     }else{throw new Exception("Unable to add $school_name");}
                 } else {
                     throw new Exception($response['message']);
                 }
-            }else{ throw new Exception("$school_name already exists");}
+            }else{ throw new Exception("$school_name already exists"); }
         }catch(Exception $e){
             $err = $e->getMessage();
         }
@@ -242,10 +235,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT term_code FROM term WHERE term_code = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$term_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO term (term_code, term_name, opening_date, closing_date) VALUES (?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$term_code,$term_name,$opening_date, $closing_date])){
+                if(strtotime($opening_date) >= strtotime($closing_date)){ throw new Exception("Opening date must be before closing date"); }
+
+                if($dmo->executeInsert('term', ['term_code'=>$term_code, 'term_name'=>$term_name, 'opening_date'=>$opening_date, 'closing_date'=>$closing_date])['status']){
                     $success = "$term_name added successfully";
-                }else{throw new Exception("Unable to add $term_name");}
+                } else {
+                    throw new Exception("Unable to add $term_name");
+                }
             }else{throw new Exception("$term_name already exists");}
         }catch(Exception $e){
             $err = $e->getMessage();
@@ -259,8 +255,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if(empty($classes)){ echo json_encode(["status"=>false, "message"=>"Please select at least one class from the template"]); return;}
             foreach($classes as $class){
                 // Process each selected class
-                $sql = "INSERT INTO school_class (school, class, is_offered) VALUES (?, ?, ?) ";
-                if(!$dmo->executeInsert(query: $sql, params: [$school, $class, 1])){
+                if($dmo->executeInsert('school_class', ['school'=>$school, 'class'=>$class, 'is_offered'=>1])['status'] == false){
                     throw new Exception("Unable to add class: $class");
                 }
             }
@@ -284,10 +279,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT stream_code FROM stream WHERE school = ? AND class = ? AND stream_name = ? OR stream_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $class_code, $stream_name, $stream_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO stream (school, class, stream_code, stream_name, description, capacity, class_teacher) VALUES (?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $class_code,$stream_code,$stream_name,$description,$capacity,$class_teacher])){
+                if($dmo->executeInsert('stream', ['school'=>$school, 'class'=>$class_code, 'stream_code'=>$stream_code, 'stream_name'=>$stream_name, 'description'=>$description, 'capacity'=>$capacity, 'class_teacher'=>$class_teacher])['status'] == true){
                     $success = "$stream_name added successfully";
-                }else{ throw new Exception("Unable to add $stream_name");}
+                } else {
+                    throw new Exception("Unable to add $stream_name");
+                }
             }else{ throw new Exception("$stream_name already exists");}
         }catch(Exception $e){
             $err = $e->getMessage();
@@ -307,10 +303,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM subject WHERE school = ? AND class = ? AND subject_code = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $class, $subject_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO subject (school, class, subject_code, subject_name, `group`, department, category) VALUES (?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school,$class,$subject_code,$subject_name,$group,$department,$category])){
+                if($dmo->executeInsert('subject', ['school'=>$school, 'class'=>$class, 'subject_code'=>$subject_code, 'subject_name'=>$subject_name, 'group'=>$group, 'department'=>$department, 'category'=>$category])['status']){
                     $success = "$subject_name added successfully";
-                }else{ throw new Exception("Unable to add $subject_name");}
+                } else {
+                    throw new Exception("Unable to add $subject_name");
+                }
             }else{ throw new Exception("$subject_name already exists");}
         }catch(Exception $e){
             $err = $e->getMessage();
@@ -335,8 +332,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT adm_no FROM student WHERE school = ? AND adm_no = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $adm_no]);
             if($num_rows<1){
-                $stmt = "INSERT INTO student (school, adm_no, first_name, surname, last_name, gender, dob, doa) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school,$adm_no,$first_name,$surname,$last_name,$gender,$dob,$doa]) && $dmo->mapStudentToClass($school, $adm_no, $class, $stream, $term, $year)['status']){
+                if($dmo->executeInsert('student', ['school'=>$school, 'adm_no'=>$adm_no, 'first_name'=>$first_name, 'surname'=>$surname, 'last_name'=>$last_name, 'gender'=>$gender, 'dob'=>$dob, 'doa'=>$doa]) && $dmo->mapStudentToClass($school, $adm_no, $class, $stream, $term, $year)['status']){
                     $success = "$first_name $last_name added successfully";
                 }else{ throw new Exception("Unable to add $first_name $last_name");}
             }else{ throw new Exception("$first_name $last_name already exists");}
@@ -368,8 +364,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT staff_code FROM staff WHERE email = ? OR phone = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$email, $phone]);
             if($num_rows<1){
-                $stmt = "INSERT INTO staff (school, staff_code, first_name, last_name, gender, email, phone, id_no, job_title, role, hire_date, department, emp_term, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school,$staff_code,$first_name,$last_name,$gender,$email,$phone,$id_no,$job_title,$role,$hire_date,$department,$emp_term,$profile_picture])){
+                if($dmo->executeInsert('staff', [
+                    'school' => $school,
+                    'staff_code' => $staff_code,
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'gender' => $gender,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'id_no' => $id_no,
+                    'job_title' => $job_title,
+                    'role' => $role,
+                    'hire_date' => $hire_date,
+                    'department' => $department,
+                    'emp_term' => $emp_term,
+                    'profile_picture' => $profile_picture
+                ])['status']){
                     $success = "$first_name $last_name added successfully";
                 }else{ throw new Exception("Unable to add $first_name $last_name");}
             }else{ throw new Exception("$first_name $last_name already exists");}
@@ -392,10 +402,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if($upload_response['status'] == TRUE){
                 $file_path = $upload_response['path'];
                 if($num_rows<1){
-                    $stmt = "INSERT INTO staff_file (school, file_id, staff, document_type, file_path) VALUES (?, ?, ?, ?, ?) ";
-                    if($dmo->executeInsert(query: $stmt, params: [$school,$file_id,$staff,$document_type,$file_path])){
+                    if($dmo->executeInsert('staff_file', ['school'=>$school, 'file_id'=>$file_id, 'staff'=>$staff, 'document_type'=>$document_type, 'file_path'=>$file_path])['status']){
                         $success = "$document_type uploaded successfully";
-                    }else{ throw new Exception("Unable to upload $document_type");}
+                    } else { throw new Exception("Unable to upload $document_type"); }
                 }else{ throw new Exception("$document_type already exists");}
             }else{ throw new Exception($upload_response['message']); }
         }catch(Exception $e){
@@ -411,10 +420,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_category WHERE job_category.name = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_category (name, description) VALUES (?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$name, $description])){
+                if($dmo->executeInsert('job_category', ['name'=>$name, 'description'=>$description])['status']){
                     $success = "$name created successfully";
-                }else{ throw new Exception("Unable to create $name");}
+                } else { throw new Exception("Unable to create $name"); }
             }else{ throw new Exception("$name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -429,10 +437,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_level WHERE job_level.name = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_level (name, description) VALUES (?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$name, $description])){
+                if($dmo->executeInsert('job_level', ['name'=>$name, 'description'=>$description])['status']){
                     $success = "$name created successfully";
-                }else{ throw new Exception("Unable to create $name");}
+                } else { throw new Exception("Unable to create $name"); }
             }else{ throw new Exception("$name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -449,8 +456,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_group WHERE job_group.name = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_group (name, description, min_salary, max_salary) VALUES (?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$name, $description, $min_salary, $max_salary])){
+                if($dmo->executeInsert('job_group', ['name'=>$name, 'description'=>$description, 'min_salary'=>$min_salary, 'max_salary'=>$max_salary])['status']){
                     $success = "$name created successfully";
                 }else{ throw new Exception("Unable to create $name");}
             }else{ throw new Exception("$name already exists");}
@@ -473,10 +479,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_title WHERE job_title.title = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_title (school, title, category_id, level_id, group_id, description, department, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $name, $category_id, $level_id, $group_id, $description, $department, $status])){
+                if($dmo->executeInsert('job_title', ['school'=>$school, 'title'=>$name, 'category_id'=>$category_id, 'level_id'=>$level_id, 'group_id'=>$group_id, 'description'=>$description, 'department'=>$department, 'status'=>$status])['status']){
                     $success = "$name created successfully";
-                }else{ throw new Exception("Unable to create $name");}
+                } else { throw new Exception("Unable to create $name"); }
             }else{ throw new Exception("$name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -491,10 +496,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM skill WHERE skill.name = ? ";
             $num_rows = $dmo->numRows(query: $stmt, params: [$name]);
             if($num_rows<1){
-                $stmt = "INSERT INTO skill (name, description) VALUES (?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$name, $description])){
+                if($dmo->executeInsert('skill', ['name'=>$name, 'description'=>$description])['status']){
                     $success = "$name created successfully";
-                }else{ throw new Exception("Unable to create $name");}
+                } else { throw new Exception("Unable to create $name"); }
             }else{ throw new Exception("$name already exists");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -510,10 +514,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_skill WHERE job_title_id = ? AND skill_id = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$job_title_id, $skill_id]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_skill (school, job_title_id, skill_id) VALUES (?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $job_title_id, $skill_id])){
+                if($dmo->executeInsert('job_skill', ['school'=>$school, 'job_title_id'=>$job_title_id, 'skill_id'=>$skill_id])['status']){
                     $success = "Skill mapped successfully";
-                }else{ throw new Exception("Unable to map skill");}
+                } else { throw new Exception("Unable to map skill"); }
             }else{ throw new Exception("Skill already mapped");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -539,10 +542,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM job_posting WHERE school = ? AND department = ? AND job_title = ? AND status = ? OR job_posting_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $department, $job_title, 'new', $job_posting_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO job_posting (school, department, job_posting_code, job_title, vacant_posts, posting_date, closing_date, description, employment_type, location, salary_range) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $department, $job_posting_code, $job_title, $vacant_posts, $posting_date, $closing_date, $description, $employment_type, $location, $salary_range])){
+                if($dmo->executeInsert('job_posting', ["school"=>$school, "department"=>$department, "job_posting_code"=>$job_posting_code, "job_title"=>$job_title, "vacant_posts"=>$vacant_posts, "posting_date"=>$posting_date, "closing_date"=>$closing_date, "description"=>$description, "employment_type"=>$employment_type, "location"=>$location, "salary_range"=>$salary_range])['status']){
                     $success = "Job vacancy posted successfully";
-                }else{ throw new Exception("Unable to post job vacancy");}
+                } else { throw new Exception("Unable to post job vacancy"); }
             }else{ throw new Exception("There already exists a new vacancy post for this job opening");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -561,10 +563,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM benefit_type WHERE school = ? AND benefit_type_name = ? OR benefit_type_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $benefit_type_name, $benefit_type_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO benefit_type (school, benefit_type_code, benefit_type_name, is_recurring, recurring_type, quantity) VALUES (?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $benefit_type_code, $benefit_type_name, $is_recurring, $recurring_type, $quantity])){
+                if($dmo->executeInsert('benefit_type', ['school'=>$school, 'benefit_type_code'=>$benefit_type_code, 'benefit_type_name'=>$benefit_type_name, 'is_recurring'=>$is_recurring, 'recurring_type'=>$recurring_type, 'quantity'=>$quantity])['status']){
                     $success = "Benefit type created successfully";
-                }else{ throw new Exception("Unable to create benefit type");}
+                } else { throw new Exception("Unable to create benefit type"); }
             }else{ throw new Exception("Benefit type already available");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -583,10 +584,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM staff_benefit WHERE school = ? AND staff_code = ? AND benefit_type = ? OR benefit_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $staff_code, $benefit_type, $benefit_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO staff_benefit (school, benefit_code, staff_code, benefit_type, description, effective_date) VALUES (?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $benefit_code, $staff_code, $benefit_type, $description, $effective_date])){
+                if($dmo->executeInsert('staff_benefit', ['school'=>$school, 'benefit_code'=>$benefit_code, 'staff_code'=>$staff_code, 'benefit_type'=>$benefit_type, 'description'=>$description, 'effective_date'=>$effective_date])['status']){
                     $success = "Staff benefit requested successfully, Awaiting Approval";
-                }else{ throw new Exception("Unable to request benefit");}
+                } else { throw new Exception("Unable to request benefit"); }
             }else{ throw new Exception("Staff benefit already requested. Please track the status");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -609,10 +609,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM training_program WHERE school = ? OR program_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $program_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO training_program (school, program_code, program_name, facilitator_name, start_date, end_date, comment) VALUES (?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $program_code, $program_name, $facilitator_name, $start_date, $end_date, $comment])){
+                if($dmo->executeInsert('training_program', ['school'=>$school, 'program_code'=>$program_code, 'program_name'=>$program_name, 'facilitator_name'=>$facilitator_name, 'start_date'=>$start_date, 'end_date'=>$end_date, 'comment'=>$comment])['status']){
                     $success = "Training program recorded successfully";
-                }else{ throw new Exception("Unable to record program");}
+                } else { throw new Exception("Unable to record program"); }
             }else{ throw new Exception("Training program already recorded.");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -631,8 +630,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM leave_type WHERE school = ? AND leave_type_name = ? OR leave_type_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $leave_type_name, $leave_type_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO leave_type (school, leave_type_code, leave_type_name, applies_to, no_of_days_off, maximum_leaves) VALUES (?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $leave_type_code, $leave_type_name, $applies_to, $no_of_days_off, $maximum_leaves])){
+                if($dmo->executeInsert('leave_type', ['school'=>$school, 'leave_type_code'=>$leave_type_code, 'leave_type_name'=>$leave_type_name, 'applies_to'=>$applies_to, 'no_of_days_off'=>$no_of_days_off, 'maximum_leaves'=>$maximum_leaves])['status']){
                     $success = "Leave type created successfully";
                 }else{ throw new Exception("Unable to create leave type");}
             }else{ throw new Exception("Leave type already available");}
@@ -655,10 +653,65 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM leave_request WHERE school = ? AND leave_type = ? OR leave_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$school, $leave_type, $leave_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO leave_request (school, leave_code, staff_code, leave_type, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$school, $leave_code, $staff_code, $leave_type, $start_date, $end_date])){
+                if($dmo->hasOngoingLeave($staff_code)){
+                    throw new Exception("You have an ongoing leave. Please track the status of your current leave application");
+                }
+
+                if($dmo->getLeaveBalance($staff_code, $leave_type) < 1){
+                    throw new Exception("You have no leave days left for this leave type");
+                }
+
+                if(strtotime($start_date) < strtotime(date('Y-m-d'))){
+                    throw new Exception("Start date cannot be in the past");
+                }
+
+                if(strtotime($start_date) > strtotime($end_date)){
+                    throw new Exception("Start date cannot be after end date");
+                }
+
+                if($dmo->getLeaveDuration($start_date, $end_date) > $dmo->getLeaveBalance($staff_code, $leave_type)){
+                    throw new Exception("You do not have enough leave days for the selected period");
+                }
+
+                if($dmo->hasOverlappingLeave($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have another leave application that overlaps with the selected period");
+                }
+
+                if($dmo->hasPendingLeaveApplication($staff_code)){
+                    throw new Exception("You have a pending leave application. Please wait for it to be processed before submitting a new one");
+                }
+
+                if($dmo->hasLeaveConflictWithTraining($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a training program that conflicts with the selected leave period");
+                }
+
+                if($dmo->hasLeaveConflictWithJobPosting($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a job posting that conflicts with the selected leave period");
+                }
+
+                if($dmo->hasLeaveConflictWithBenefit($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a staff benefit that conflicts with the selected leave period");
+                }
+
+                if ($dmo->hasLeaveConflictWithTransfer($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a transfer request that conflicts with the selected leave period");
+                }
+
+                if($dmo->hasLeaveConflictWithPerformanceReview($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a performance review that conflicts with the selected leave period");
+                }
+
+                if($dmo->hasLeaveConflictWithDisciplinaryAction($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a disciplinary action that conflicts with the selected leave period");
+                }
+
+                if($dmo->hasLeaveConflictWithPayroll($staff_code, $start_date, $end_date)){
+                    throw new Exception("You have a payroll process that conflicts with the selected leave period");
+                }
+
+                if($dmo->executeInsert('leave_request', ['school'=>$school, 'leave_code'=>$leave_code, 'staff_code'=>$staff_code, 'leave_type'=>$leave_type, 'start_date'=>$start_date, 'end_date'=>$end_date])['status']){
                     $success = "Leave application submitted successfully";
-                }else{ throw new Exception("Unable to submit your leave application");}
+                } else { throw new Exception("Unable to submit your leave application"); }
             }else{ throw new Exception("You already have an ongoing leave");}
         } catch (Exception $e) {
             $err = $e->getMessage();
@@ -680,8 +733,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt = "SELECT id FROM staff_transfer_request WHERE transfer_from = ? AND transfer_to = ? OR transfer_code = ?";
             $num_rows = $dmo->numRows(query: $stmt, params: [$transfer_from, $transfer_to, $transfer_code]);
             if($num_rows<1){
-                $stmt = "INSERT INTO staff_transfer_request (transfer_code, transfer_from, transfer_to, date_requested, requested_by, on_behalf_of, effective_date, approval_status, approved_by, rejected_by, comment, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
-                if($dmo->executeInsert(query: $stmt, params: [$transfer_code, $transfer_from, $transfer_to, $date_requested, $user['userid'], $on_behalf_of, $effective_date, 'New', "", "", $comment, ""])){
+                if($dmo->executeInsert('staff_transfer_request', ['transfer_code'=>$transfer_code, 'transfer_from'=>$transfer_from, 'transfer_to'=>$transfer_to, 'date_requested'=>$date_requested, 'requested_by'=>$user['userid'], 'on_behalf_of'=>$on_behalf_of, 'effective_date'=>$effective_date, 'approval_status'=>'New', 'approved_by'=>"", 'rejected_by'=>"", 'comment'=>$comment, 'reason'=>""])){
                     $success = "Transfer requested successfully";
                 }else{ throw new Exception("Unable to request transfer");}
             }else{ throw new Exception("Transfer request already available");}

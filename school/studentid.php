@@ -336,8 +336,8 @@ $(document).ready(function(){
             return;
         }
 
-        if (file.size > 2 * 1024 * 1024) {
-            alert("Max file size is 2MB");
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Max file size is 5MB");
             return;
         }
 
