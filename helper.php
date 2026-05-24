@@ -196,30 +196,6 @@ function drawCardFront(TCPDF $pdf, array $student, array $info){
     $pdf->SetLineWidth(0.6);
     $pdf->Rect(2, 18, 22, 27);
 
-    // try {
-    //     if (!empty($student['photo'])) {
-
-    //         // Convert URL → server path
-    //         $photoPath = parse_url($student['photo'], PHP_URL_PATH);
-    //         $originalPhoto = $_SERVER['DOCUMENT_ROOT'] . $photoPath;
-
-    //         $normalizedDir = __DIR__ . "/ids/photos/";
-    //         if (!is_dir($normalizedDir)) {
-    //             mkdir($normalizedDir, 0777, true);
-    //         }
-
-    //         $normalized = $normalizedDir . $info['school_code'] . "_" . $admNo . ".jpg";
-
-    //         if (file_exists($originalPhoto)) {
-    //             if (file_exists($normalized)) { unlink($normalized); }
-    //             normalizeStudentPhoto($originalPhoto, $normalized);
-    //             $pdf->Image($normalized, 2, 18, 22, 27);
-                
-    //         }
-    //     }
-    // } catch (Exception $e) {
-    //     $dmo->log("Could not find passport photo for Adm. No: $admNo");
-    // }
     try {
         if (!empty($student['photo'])) {
 

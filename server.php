@@ -707,32 +707,83 @@ class DBController extends DataHandler {
 
         return ['clause' => implode(' AND ', $clauses), 'params' => $params];
     }
-    private function parseSingleCondition(string $column, mixed $value): array {
+    // private function parseSingleCondition(string $column, mixed $value): array {
+    //     $params = [];
+    //     $clause = '';
+
+    //     if (is_array($value) && isset($value['operator'], $value['value'])) {
+    //         $op = strtoupper($value['operator']);
+    //         $val = $value['value'];
+
+    //         if (in_array($op, ['IN', 'NOT IN']) && is_array($val)) {
+    //             $placeholders = implode(',', array_fill(0, count($val), '?'));
+    //             $clause = "$column $op ($placeholders)";
+    //             $params = $val;
+    //         } elseif ($op === 'BETWEEN' && is_array($val) && count($val) === 2) {
+    //             $clause = "$column BETWEEN ? AND ?";
+    //             $params = $val;
+    //         } elseif ($op === 'IS NULL' || $op === 'IS NOT NULL') {
+    //             $clause = "$column $op";
+    //         } else {
+    //             $clause = "$column $op ?";
+    //             $params[] = $val;
+    //         }
+    //     } else {
+    //         $clause = "$column = ?";
+    //         $params[] = $value;
+    //     }
+
+    //     return [$clause, $params];
+    // }
+    private function parseSingleCondition(string|int $column, mixed $value): array {
         $params = [];
         $clause = '';
 
+        // RAW SQL SUPPORT
+        if (is_array($value) && isset($value['raw'])) {
+            $clause = $value['raw'];
+            $params = $value['params'] ?? [];
+            return [$clause, $params];
+        }
+
+        // NORMAL OPERATORS
         if (is_array($value) && isset($value['operator'], $value['value'])) {
-            $op = strtoupper($value['operator']);
+
+            $op  = strtoupper($value['operator']);
             $val = $value['value'];
 
+            // IN / NOT IN
             if (in_array($op, ['IN', 'NOT IN']) && is_array($val)) {
+
                 $placeholders = implode(',', array_fill(0, count($val), '?'));
+
                 $clause = "$column $op ($placeholders)";
                 $params = $val;
-            } elseif ($op === 'BETWEEN' && is_array($val) && count($val) === 2) {
+            }
+
+            // BETWEEN
+            elseif ($op === 'BETWEEN' && is_array($val) && count($val) === 2) {
+
                 $clause = "$column BETWEEN ? AND ?";
                 $params = $val;
-            } elseif ($op === 'IS NULL' || $op === 'IS NOT NULL') {
+            }
+
+            // NULL CHECKS
+            elseif ($op === 'IS NULL' || $op === 'IS NOT NULL') {
                 $clause = "$column $op";
-            } else {
+            }
+
+            // NORMAL OPERATORS
+            else {
                 $clause = "$column $op ?";
                 $params[] = $val;
             }
+
         } else {
+            // DEFAULT "="
             $clause = "$column = ?";
             $params[] = $value;
         }
-
         return [$clause, $params];
     }
 
@@ -1408,6 +1459,127 @@ class DataManipulation extends User{
     public function generateUid(): string{
         return substr(string: str_shuffle(string: "0123456789qwertyuioplkjhgfdsamnbvcxzQWERTYUIOPLKJHGFDSAMNBVCXZ"),offset: 0, length: 5);
     }
+    public function generateNumberSeries(
+        string $school,
+        string $category,
+        ?string $term = null
+    ): string {
+
+        try {
+            if (!$this->pdo->inTransaction()) {
+                $this->pdo->beginTransaction();
+            }
+
+            $sql = "SELECT * FROM no_series WHERE school = :school AND category = :category AND active = 1 LIMIT 1 FOR UPDATE";
+
+            $stmt = $this->pdo->prepare($sql);
+
+            $stmt->execute([
+                ':school' => $school,
+                ':category' => $category
+            ]);
+
+            $series = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$series) { throw new Exception("Active number series configuration not found."); }
+
+            $year  = date('Y');
+            $month = date('m');
+            $day   = date('d');
+
+            $term = !empty($term)
+                ? strtoupper(trim($term))
+                : '';
+
+            $lastUpdated = strtotime($series['updated_at']);
+
+            $reset = false;
+
+            if ($series['reset_yearly'] && date('Y', $lastUpdated) != $year ) { $reset = true; }
+
+            if ($series['reset_monthly'] && date('Y-m', $lastUpdated) != date('Y-m') ) { $reset = true; }
+
+            if ($series['reset_termly'] && !empty($term)) {
+                /*
+                OPTIONAL:
+                Store current term separately later
+                */
+            }
+
+            // DETERMINE NEXT NUMBER
+            $nextNo = $reset? $series['startno'] : ($series['lastused'] + 1);
+
+            // VALIDATE MAX LIMIT
+            if (
+                !empty($series['endno']) &&
+                $nextNo > $series['endno']
+            ) {
+                throw new Exception(
+                    "Number series limit reached."
+                );
+            }
+
+            // PAD NUMBER
+            $runningNo = str_pad(
+                (string)$nextNo,
+                (int)$series['pad_length'],
+                '0',
+                STR_PAD_LEFT
+            );
+
+            // BUILD PLACEHOLDERS
+            $placeholders = [
+                '{PREFIX}' => $series['prefix'] ?? '',
+                '{SUFFIX}' => $series['suffix'] ?? '',
+                '{SCHOOL}' => strtoupper($school),
+                '{CATEGORY}' => strtoupper($category),
+                '{YEAR}' => $year,
+                '{MONTH}' => $month,
+                '{DAY}' => $day,
+                '{TERM}' => $term,
+                '{NO}' => $runningNo,
+                '{UID}' => $series['include_uid']? $this->generateUid() : ''
+            ];
+
+            // GENERATE FINAL NUMBER
+            $finalNo = str_replace(
+                array_keys($placeholders),
+                array_values($placeholders),
+                $series['format']
+            );
+
+            // REMOVE DOUBLE SEPARATORS
+            $separator = $series['separator'] ?? '-';
+
+            $finalNo = preg_replace(
+                '/' . preg_quote($separator, '/') . '+/',
+                $separator,
+                $finalNo
+            );
+
+            // REMOVE TRAILING SEPARATORS
+            $finalNo = trim($finalNo, $separator);
+
+            // UPDATE SERIES
+            $update = "UPDATE no_series SET lastused = :lastused, updated_at = NOW() WHERE id = :id";
+            $stmtUpdate = $this->pdo->prepare($update);
+            $stmtUpdate->execute([
+                ':lastused' => $nextNo,
+                ':id' => $series['id']
+            ]);
+            $this->pdo->commit();
+            return $finalNo;
+
+        } catch (Throwable $e) {
+            // SAFE ROLLBACK
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            // LOG ERROR
+            $this->log("Number Series Error: " . $e->getMessage());
+            throw new Exception("Failed to generate number series.");
+        }
+    }
     public function create_dummy_school($code, $name, $category, $mail, $contact, $logo="upload/png/user-default-2-min.png"){
         $stmt = "SELECT `school_code` FROM school WHERE school_code = ? OR school_code = ? ";
         $num_rows = $this->numRows(query: $stmt, params: [$code, $name]);
@@ -1587,10 +1759,15 @@ class DataManipulation extends User{
     }
     public function getSchools($conditions=[]){
         $result = $this->select([
-            'columns' => "id, school_code, school_name, address, logo, motto, mission, vision, core_values established_year,status, created_at, updated_at",
-            'table' => 'school',
+            'columns' => "s.id, s.school_code, s.school_name, c.description AS county, sc.description AS sub_county, w.description AS ward, s.kra_pin, s.reg_no, s.emis_code, s.knec_center_no, curriculum, s.level, s.gender, s.boarding_status, s.type, s.address, s.latitude, s.longitude, s.logo, s.motto, s.mission, s.vision, s.core_values, s.days_per_week, s.periods_per_day, s.student_population, s.staff_population, s.principal_name, s.deputy_principal, s.school_color, s.established_year, s.status, s.created_at, s.updated_at",
+            'table' => 'school s',
+            'joins' => [
+                'LEFT JOIN county c ON s.county = c.code',
+                'LEFT JOIN sub_county sc ON s.sub_county = sc.code',
+                'LEFT JOIN ward w ON s.ward = w.code'
+            ],
             'where' => $conditions,
-            'order' => 'school_code ASC, school_name ASC'
+            'order' => 's.school_code ASC, s.school_name ASC'
         ]);
         if($result['status'] || sizeof($result['data']) > 0){
             $this->response = ["status"=>true, "data"=>$result['data']];
@@ -1896,21 +2073,18 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function getClassesFromTemplate($school){
-        // $stmt = "SELECT DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order, cl.class_number FROM class cl INNER JOIN academic_level al ON cl.level = al.level_name WHERE cl.class_code NOT IN (SELECT class FROM school_class WHERE school = ?) ORDER BY al.stage_order DESC, class_number DESC";
-        // $params = [$school];
-        // $num_rows = $this->numRows(query: $stmt, params: $params);
-        // if($num_rows>0){
-        //     $this->response = ["status"=>true, "data"=>$this->readData_array(query: $stmt, params: $params)];
-        // }else{$this->response = ["status"=>false, "message"=>"No records found"];}
-        // return $this->response;
         $result = $this->select([
-            'columns' => "DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order",
+            'columns' => "DISTINCT cl.id, cl.class_code, cl.class_name, cl.abbrev, al.level_name, al.stage_order, cl.class_number",
             'table' => 'class cl',
             'joins' => [
-                "INNER JOIN academic_level al ON cl.level = al.level_name",
-                "LEFT JOIN school_class sc ON sc.class = cl.class_code AND sc.school = '$school'"
+                'INNER JOIN academic_level al ON cl.level = al.level_name'
             ],
-            'where' => ['sc.class IS NULL', 'cl.is_template = 1', 'cl.is_active = 1'],
+            'where' => [
+                [
+                    'raw' => 'cl.class_code NOT IN (SELECT class FROM school_class WHERE school = ?)',
+                    'params' => [$school]
+                ]
+            ],
             'order' => 'al.stage_order DESC, class_number DESC'
         ]);
         if($result['status'] || sizeof($result['data']) > 0){
@@ -2026,17 +2200,6 @@ class DataManipulation extends User{
         return $this->response;
     }
     public function mapStudentToClass($school, $adm_no, $class, $stream, $term, $year){
-        // $stmt = "SELECT id FROM class_enrollment WHERE school = ? AND adm_no = ? AND class = ? AND stream = ? AND term = ? AND year = ? ";
-        // $num_rows = $this->numRows(query: $stmt, params: [$school, $adm_no, $class, $stream, $term, $year]);
-        // if($num_rows<1){
-        //     if($this->executeInsert('class_enrollment', ['school'=>$school, 'adm_no'=>$adm_no, 'class'=>$class, 'stream'=>$stream, 'term'=>$term, 'year'=>$year])['status']){
-        //         $this->response = ["status"=>true, "message"=>"$adm_no successfully mapped to $class $stream"];
-        //     } else {
-        //         $this->response = ["status"=>false, "message"=>"Unable to map $adm_no to $class $stream"];
-        //     }
-        // }else{ $this->response = ["status"=>false, "message"=>"$adm_no already exists in $class $stream"];}
-        // return $this->response;
-
         $result = $this->select([
             'columns' => "id",
             'table' => 'class_enrollment',

@@ -40,8 +40,9 @@
                                                 </thead>
                                                 <tbody id="tbltemplateclasses">
                                                 <?php
-                                                if($dmo->getClassesFromTemplate($user['school_code'])['status']){
-                                                $response = $dmo->getClassesFromTemplate($user['school_code']); $count=1;
+                                                $response = $dmo->getClassesFromTemplate($user['school_code']);
+                                                if($response['status']){
+                                                $count=1;
                                                 foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                                     <tr>
                                                         <td><input type="checkbox" name="class[]" class="select_class" id="<?= $dmo->safeData($row['id']) ?>" value="<?= $dmo->safeData($row['class_code']) ?>"></td>

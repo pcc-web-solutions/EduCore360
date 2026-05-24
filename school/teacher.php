@@ -174,8 +174,9 @@ require_once __DIR__."/uac.php"; $schInfo = $dmo->getSchInfo($user)['status']? $
                                                         </thead>
                                                         <tbody id="tbl<?= str_replace(" ","_",$value); ?>s">
                                                         <?php
-                                                        if($dmo->getTeachers(["t.school"=>$user['school_code'],"t.emp_term"=>$value])['status']){
-                                                        $response = $dmo->getTeachers(["t.school"=>$user['school_code'],"t.emp_term"=>$value]); $count=1;
+                                                        $response = $dmo->getTeachers(["t.school"=>$user['school_code'],"t.emp_term"=>$value]);
+                                                        if($response['status']){
+                                                        $count=1;
                                                         foreach ($response['data'] as $row) { $id = $dmo->safeData($row['id']); ?>
                                                             <tr>
                                                                 <td><?= $count ?></td>

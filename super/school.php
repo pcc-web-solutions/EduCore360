@@ -68,17 +68,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-box">  
-                        <table id="tblschool" class="table-bordered table-head-fixed table-striped table-responsive text-nowrap">
+                    <div class="card-box table-responsive">  
+                        <table id="tblschool" class="table-bordered table-head-fixed table-striped text-nowrap w-100">
                             <thead>
                                 <tr style="height: 40px;">
                                     <th>Logo</th>
                                     <th>#</th>
                                     <th>School Code</th>
                                     <th>School Name</th>
-                                    <th>Category</th>
-                                    <th>Email Address</th>
-                                    <th>Contact Number</th>
                                     <th>Logo Path</th>
                                 </tr>
                             </thead>
@@ -92,9 +89,6 @@
                                     <td><?= $count ?></td>
                                     <td contentEditable=true onblur='edit("school","school_code",<?= $id ?>,this)'><?= $dmo->safeData($row['school_code']) ?></td>
                                     <td contentEditable=true onblur='edit("school","school_name",<?= $id ?>,this)'><?= $dmo->safeData($row['school_name']) ?></td>
-                                    <td contentEditable=true onblur='edit("school","category",<?= $id ?>,this)'><?= $dmo->safeData($row['category']) ?></td>
-                                    <td contentEditable=true onblur='edit("school","contact",<?= $id ?>,this)'><?= $dmo->safeData($row['contact']) ?></td>
-                                    <td contentEditable=true onblur='edit("school","mail",<?= $id ?>,this)'><?= $dmo->safeData($row['mail']) ?></td>
                                     <td contentEditable=true onblur='edit("school","logo",<?= $id ?>,this)'><?= $dmo->safeData($row['logo']) ?></td>
                                 </tr>
                             <?php $count++; } }?>

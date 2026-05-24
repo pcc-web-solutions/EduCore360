@@ -8,8 +8,8 @@ try {
         foreach ($schools['data'] as $row) {
             $school_code = $row['school_code'];
             $school_name = $row['school_name'];
-            $school_mail = $row['mail'];
-            $school_contact = $row['contact'];
+            $school_mail = $row['mail']?? "";
+            $school_contact = $row['contact']?? "";
             $school_logo = $row['logo'];
             
             $result = $dmo->getUsers([
